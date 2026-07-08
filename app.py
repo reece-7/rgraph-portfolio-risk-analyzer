@@ -51,6 +51,13 @@ n_simulations = st.sidebar.number_input(
     step=500
 )
 
+fan_chart_lines = st.sidebar.selectbox(
+    "Monte Carlo fan chart detail",
+    options=[1, 3, 5],
+    index=2,
+    help="Choose how many percentile lines to display in the Monte Carlo fan chart."
+)
+
 time_horizon = st.sidebar.number_input(
     "Monte Carlo horizon in trading days",
     min_value=21,
@@ -163,6 +170,30 @@ if duplicate_tickers:
 def convert_df_to_csv(dataframe):
     return dataframe.to_csv(index=True).encode("utf-8")
 
+def build_fan_chart(paths_df, fan_chart_lines):
+    """
+    Builds a Monte Carlo fan chart with selected percentile bands.
+    """
+
+    if fan_chart_lines == 1:
+        return pd.DataFrame({
+            "Median": paths_df.quantile(0.50, axis=1)
+        })
+
+    if fan_chart_lines == 3:
+        return pd.DataFrame({
+            "25th Percentile": paths_df.quantile(0.25, axis=1),
+            "Median": paths_df.quantile(0.50, axis=1),
+            "75th Percentile": paths_df.quantile(0.75, axis=1)
+        })
+
+    return pd.DataFrame({
+        "5th Percentile": paths_df.quantile(0.05, axis=1),
+        "25th Percentile": paths_df.quantile(0.25, axis=1),
+        "Median": paths_df.quantile(0.50, axis=1),
+        "75th Percentile": paths_df.quantile(0.75, axis=1),
+        "95th Percentile": paths_df.quantile(0.95, axis=1)
+    })
 
 # =========================
 # RUN ANALYSIS
@@ -303,6 +334,37 @@ if run_button:
                     st.dataframe(
                         monte_carlo_final_values.describe(),
                         use_container_width=True
+                    )
+
+                    parametric_paths_df = pd.DataFrame(results["parametric_paths"])
+                    bootstrap_paths_df = pd.DataFrame(results["bootstrap_paths"])
+
+                    st.subheader("Parametric Monte Carlo Fan Chart")
+
+                    parametric_fan_chart = build_fan_chart(
+                        parametric_paths_df,
+                        fan_chart_lines
+                    )
+
+                    st.line_chart(parametric_fan_chart)
+
+                    st.caption(
+                        f"The fan chart displays {fan_chart_lines} percentile line(s). "
+                        "The analysis still uses the full number of Monte Carlo simulations."
+                    )
+
+                    st.subheader("Bootstrap Monte Carlo Fan Chart")
+
+                    bootstrap_fan_chart = build_fan_chart(
+                        bootstrap_paths_df,
+                        fan_chart_lines
+                    )
+
+                    st.line_chart(bootstrap_fan_chart)
+
+                    st.caption(
+                        f"The Bootstrap fan chart displays {fan_chart_lines} percentile line(s). "
+                        "The analysis still uses the full number of Monte Carlo simulations."
                     )
 
                     st.subheader("Monte Carlo Final Values")
