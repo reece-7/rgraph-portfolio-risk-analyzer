@@ -141,8 +141,8 @@ Project_Montecarlo/
 Clone the repository:
 
 ```bash
-git clone https://github.com/reece-7/monte-carlo-portfolio-risk-simulator.git
-cd monte-carlo-portfolio-risk-simulator
+git clone https://github.com/reece-7/interactive-portfolio-risk-analyzer.git
+cd interactive-portfolio-risk-analyzer
 ```
 
 Create a virtual environment:
