@@ -10,7 +10,8 @@ st.set_page_config(
 )
 
 
-st.title("Interactive Portfolio Risk Analyzer")
+st.title("rGraph")
+st.subheader("Interactive Portfolio Risk Analyzer")
 
 st.write(
     """
