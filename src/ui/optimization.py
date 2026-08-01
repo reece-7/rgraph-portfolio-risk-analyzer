@@ -7,6 +7,10 @@ from src.ui.charts import (
     build_horizontal_allocation_chart,
 )
 
+from src.ui.tables import (
+    render_financial_table,
+)
+
 def format_percentage(value):
     """
     Formats a decimal value as a percentage.
@@ -302,40 +306,24 @@ def render_optimization(
         ),
     )
 
-    formatted_optimal_portfolios = (
-        optimal_portfolios.copy()
-    )
-
-    percentage_columns = [
-        "Annualized Return",
-        "Annualized Volatility",
-    ]
-
     weight_columns = [
         column
-        for column in formatted_optimal_portfolios.columns
+        for column in optimal_portfolios.columns
         if column.startswith("Weight ")
     ]
 
-    for column in percentage_columns + weight_columns:
-        if column in formatted_optimal_portfolios.columns:
-            formatted_optimal_portfolios[column] = (
-                formatted_optimal_portfolios[column]
-                .map(format_percentage)
-            )
-
-    if (
-        "Sharpe Ratio"
-        in formatted_optimal_portfolios.columns
-    ):
-        formatted_optimal_portfolios["Sharpe Ratio"] = (
-            formatted_optimal_portfolios["Sharpe Ratio"]
-            .map(format_ratio)
-        )
-
-    st.dataframe(
-        formatted_optimal_portfolios,
-        use_container_width=True,
+    render_financial_table(
+        optimal_portfolios,
+        index_label="Portfolio",
+        percent_columns=[
+            "Annualized Return",
+            "Annualized Volatility",
+            *weight_columns,
+        ],
+        ratio_columns=[
+            "Sharpe Ratio",
+        ],
+        key="optimal_portfolios_table",
     )
 
     # =========================
@@ -384,19 +372,31 @@ def render_optimization(
 
     st.altair_chart(
         allocation_comparison_chart,
-        use_container_width=True,
+        width="stretch",
+        theme=None,
     )
 
-    st.dataframe(
+    weights_comparison_table = (
         weights_comparison.rename(
             columns={
                 "Current Portfolio": (
                     "Current Portfolio (%)"
                 ),
-                "Risk Parity": "Risk Parity (%)",
+                "Risk Parity": (
+                    "Risk Parity (%)"
+                ),
             }
-        ),
-        use_container_width=True,
+        )
+    )
+
+    render_financial_table(
+        weights_comparison_table,
+        index_label="Ticker",
+        percentage_point_columns=[
+            "Current Portfolio (%)",
+            "Risk Parity (%)",
+        ],
+        key="allocation_comparison_table",
     )
 
     # =========================
@@ -412,23 +412,20 @@ def render_optimization(
         ),
     )
 
-    formatted_risk_parity = risk_parity_df.copy()
+    risk_parity_table = (
+        risk_parity_df[
+            ["Weight (%)"]
+        ]
+        .copy()
+    )
 
-    if "Weight" in formatted_risk_parity.columns:
-        formatted_risk_parity["Weight"] = (
-            formatted_risk_parity["Weight"]
-            .map(format_percentage)
-        )
-
-    if "Weight (%)" in formatted_risk_parity.columns:
-        formatted_risk_parity["Weight (%)"] = (
-            formatted_risk_parity["Weight (%)"]
-            .map(lambda value: f"{value:.2f}%")
-        )
-
-    st.dataframe(
-        formatted_risk_parity,
-        use_container_width=True,
+    render_financial_table(
+        risk_parity_table,
+        index_label="Ticker",
+        percentage_point_columns=[
+            "Weight (%)",
+        ],
+        key="risk_parity_weights_table",
     )
 
     risk_parity_chart = (
@@ -442,7 +439,8 @@ def render_optimization(
 
     st.altair_chart(
         risk_parity_chart,
-        use_container_width=True,
+        width="stretch",
+        theme=None,
     )
 
     # =========================
@@ -467,15 +465,32 @@ def render_optimization(
 
     st.altair_chart(
         efficient_frontier_chart,
-        use_container_width=True,
+        width="stretch",
+        theme=None,
     )
 
     with st.expander(
         "View Efficient Frontier data"
     ):
-        st.dataframe(
+        frontier_weight_columns = [
+            column
+            for column in efficient_frontier.columns
+            if column.startswith("Weight ")
+        ]
+
+        render_financial_table(
             efficient_frontier.head(100),
-            use_container_width=True,
+            percent_columns=[
+                "Annualized Return",
+                "Annualized Volatility",
+                *frontier_weight_columns,
+            ],
+            ratio_columns=[
+                "Sharpe Ratio",
+            ],
+            hide_index=True,
+            height=430,
+            key="efficient_frontier_table",
         )
 
         st.caption(

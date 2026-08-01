@@ -2130,6 +2130,195 @@ def apply_global_styles():
         }
 
         /* =========================
+            MONTE CARLO DATA TABLES
+        ========================= */
+
+        .rg-mc-table-scroll {
+            width: 100%;
+            overflow-x: auto;
+            margin: 0.35rem 0 1.4rem;
+            padding-bottom: 0.25rem;
+            scrollbar-width: thin;
+            scrollbar-color:
+                rgba(73, 111, 140, 0.65)
+                transparent;
+        }
+
+        .rg-mc-table-scroll::-webkit-scrollbar {
+            height: 5px;
+        }
+
+        .rg-mc-table-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .rg-mc-table-scroll::-webkit-scrollbar-thumb {
+            background: rgba(73, 111, 140, 0.65);
+            border-radius: 999px;
+        }
+
+        .rg-mc-table {
+            width: 100%;
+            min-width: 900px;
+            border-collapse: collapse;
+            border-spacing: 0;
+            background: transparent;
+        }
+
+        .rg-mc-table thead {
+            border-top: 1px solid rgba(40, 67, 94, 0.65);
+            border-bottom: 1px solid rgba(40, 67, 94, 0.65);
+        }
+
+        .rg-mc-table th,
+        .rg-mc-table td {
+            padding: 0.9rem 1rem;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .rg-mc-table thead th {
+            color: #667F94;
+            font-family:
+                "Manrope",
+                "Segoe UI",
+                sans-serif;
+            font-size: 0.59rem;
+            font-weight: 700;
+            letter-spacing: 0.085em;
+            text-transform: uppercase;
+        }
+
+        .rg-mc-table thead th:first-child {
+            text-align: left;
+        }
+
+        .rg-mc-table tbody {
+            border-bottom: 1px solid rgba(40, 67, 94, 0.55);
+        }
+
+        .rg-mc-table tbody tr {
+            border-bottom: 1px solid rgba(40, 67, 94, 0.34);
+            transition:
+                background 140ms ease;
+        }
+
+        .rg-mc-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .rg-mc-table tbody tr:hover {
+            background: rgba(19, 43, 61, 0.3);
+        }
+
+        .rg-mc-table tbody th {
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            min-width: 185px;
+            color: #D8E6EF;
+            background: #07111F;
+            font-family:
+                "Manrope",
+                "Segoe UI",
+                sans-serif;
+            font-size: 0.72rem;
+            font-weight: 680;
+            text-align: left;
+        }
+
+        .rg-mc-table tbody td {
+            color: #AFC0CD;
+            font-family:
+                ui-monospace,
+                "SFMono-Regular",
+                "Cascadia Code",
+                "Roboto Mono",
+                Consolas,
+                monospace;
+            font-size: 0.71rem;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.015em;
+        }
+
+        .rg-mc-table tbody td.is-positive {
+            color: #68DDB2;
+        }
+
+        .rg-mc-table tbody td.is-warning {
+            color: #E9C46A;
+        }
+
+        .rg-mc-table tbody td.is-negative {
+            color: #F18A9A;
+        }
+
+        .rg-mc-table.is-compact th,
+        .rg-mc-table.is-compact td {
+            padding-top: 0.78rem;
+            padding-bottom: 0.78rem;
+        }
+
+        /* =========================
+            ANALYSIS STATE
+        ========================= */
+
+        .rg-analysis-state {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            margin: 1.4rem 0 0.5rem;
+            padding: 0.85rem 0;
+            border-top: 1px solid rgba(40, 67, 94, 0.52);
+            border-bottom: 1px solid rgba(40, 67, 94, 0.52);
+            color: #71899D;
+            font-size: 0.7rem;
+            line-height: 1.5;
+        }
+
+        .rg-analysis-state-dot {
+            flex: 0 0 auto;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+        }
+
+        .rg-analysis-state strong {
+            flex: 0 0 auto;
+            font-size: 0.69rem;
+            font-weight: 720;
+            letter-spacing: 0.035em;
+        }
+
+        .rg-analysis-state strong::after {
+            content: "—";
+            margin-left: 0.65rem;
+            color: #405B70;
+        }
+
+        .rg-analysis-state.is-current
+        .rg-analysis-state-dot {
+            background: #68DDB2;
+            box-shadow:
+                0 0 10px rgba(104, 221, 178, 0.55);
+        }
+
+        .rg-analysis-state.is-current strong {
+            color: #68DDB2;
+        }
+
+        .rg-analysis-state.is-stale
+        .rg-analysis-state-dot {
+            background: #F4C95D;
+            box-shadow:
+                0 0 10px rgba(244, 201, 93, 0.48);
+        }
+
+        .rg-analysis-state.is-stale strong {
+            color: #F4C95D;
+        }
+
+        /* =========================
            MOBILE
         ========================= */
 
@@ -2421,6 +2610,20 @@ def apply_global_styles():
 
             .rg-download-row-meta {
                 gap: 0.4rem 0.9rem;
+            }
+
+            .rg-analysis-state {
+                align-items: flex-start;
+                flex-wrap: wrap;
+            }
+
+            .rg-analysis-state strong::after {
+                display: none;
+            }
+
+            .rg-analysis-state > span:last-child {
+                flex-basis: calc(100% - 1.5rem);
+                margin-left: 1.35rem;
             }
 
         }

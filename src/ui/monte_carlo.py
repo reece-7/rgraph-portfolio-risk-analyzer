@@ -1,7 +1,13 @@
+from html import escape
+
 import numpy as np
 import pandas as pd
 import streamlit as st
 
+from src.ui.charts import (
+    build_monte_carlo_fan_chart,
+    build_terminal_distribution_chart,
+)
 
 def format_currency(value):
     """
@@ -18,65 +24,179 @@ def format_percentage(value):
 
     return f"{value * 100:.2f}%"
 
-
-def build_fan_chart(paths_df, fan_chart_lines):
+def format_table_currency(value):
     """
-    Builds a Monte Carlo fan chart with selected percentile lines.
+    Formats currency values for compact financial tables.
     """
 
-    if fan_chart_lines == 1:
-        return pd.DataFrame(
-            {
-                "Median": paths_df.quantile(
-                    0.50,
-                    axis=1,
-                )
-            }
+    if value is None or pd.isna(value):
+        return "—"
+
+    return f"${value:,.0f}"
+
+
+def format_table_percentage(value):
+    """
+    Formats decimal values as percentages.
+    """
+
+    if value is None or pd.isna(value):
+        return "—"
+
+    return f"{value * 100:.2f}%"
+
+
+def format_monte_carlo_metric(column, value):
+    """
+    Formats the Monte Carlo comparison table
+    according to the type of metric.
+    """
+
+    if column in {
+        "Mean Final Value",
+        "Median Final Value",
+    }:
+        return format_table_currency(value)
+
+    if column in {
+        "Probability of Loss",
+        "95% Value at Risk",
+        "95% Expected Shortfall",
+    }:
+        return format_table_percentage(value)
+
+    if value is None or pd.isna(value):
+        return "—"
+
+    if isinstance(value, (int, float, np.number)):
+        return f"{value:,.2f}"
+
+    return str(value)
+
+
+def format_distribution_statistic(column, value):
+    """
+    Formats descriptive distribution statistics.
+    """
+
+    if value is None or pd.isna(value):
+        return "—"
+
+    if column == "count":
+        return f"{int(value):,}"
+
+    return format_table_currency(value)
+
+
+def get_monte_carlo_cell_tone(column, value):
+    """
+    Returns a visual tone for selected risk values.
+    """
+
+    if value is None or pd.isna(value):
+        return ""
+
+    if column in {
+        "95% Value at Risk",
+        "95% Expected Shortfall",
+    }:
+        return "is-negative"
+
+    if column == "Probability of Loss":
+        if value >= 0.25:
+            return "is-negative"
+
+        if value >= 0.10:
+            return "is-warning"
+
+        return "is-positive"
+
+    return ""
+
+
+def build_financial_table_html(
+    dataframe,
+    index_title,
+    value_formatter,
+    tone_resolver=None,
+    compact=False,
+):
+    """
+    Converts a DataFrame into a styled HTML financial table.
+    """
+
+    table_class = "rg-mc-table"
+
+    if compact:
+        table_class += " is-compact"
+
+    html_parts = [
+        '<div class="rg-mc-table-scroll">',
+        f'<table class="{table_class}">',
+        "<thead>",
+        "<tr>",
+        f"<th>{escape(str(index_title))}</th>",
+    ]
+
+    for column in dataframe.columns:
+        html_parts.append(
+            f"<th>{escape(str(column))}</th>"
         )
 
-    if fan_chart_lines == 3:
-        return pd.DataFrame(
-            {
-                "25th Percentile": paths_df.quantile(
-                    0.25,
-                    axis=1,
-                ),
-                "Median": paths_df.quantile(
-                    0.50,
-                    axis=1,
-                ),
-                "75th Percentile": paths_df.quantile(
-                    0.75,
-                    axis=1,
-                ),
-            }
-        )
-
-    return pd.DataFrame(
-        {
-            "5th Percentile": paths_df.quantile(
-                0.05,
-                axis=1,
-            ),
-            "25th Percentile": paths_df.quantile(
-                0.25,
-                axis=1,
-            ),
-            "Median": paths_df.quantile(
-                0.50,
-                axis=1,
-            ),
-            "75th Percentile": paths_df.quantile(
-                0.75,
-                axis=1,
-            ),
-            "95th Percentile": paths_df.quantile(
-                0.95,
-                axis=1,
-            ),
-        }
+    html_parts.extend(
+        [
+            "</tr>",
+            "</thead>",
+            "<tbody>",
+        ]
     )
 
+    for index, row in dataframe.iterrows():
+        html_parts.append("<tr>")
+
+        html_parts.append(
+            f"""
+            <th scope="row">
+                {escape(str(index))}
+            </th>
+            """
+        )
+
+        for column in dataframe.columns:
+            value = row[column]
+
+            formatted_value = value_formatter(
+                column,
+                value,
+            )
+
+            tone_class = ""
+
+            if tone_resolver is not None:
+                tone_class = tone_resolver(
+                    column,
+                    value,
+                )
+
+            html_parts.append(
+                f"""
+                <td class="{tone_class}">
+                    {escape(str(formatted_value))}
+                </td>
+                """
+            )
+
+        html_parts.append("</tr>")
+
+    html_parts.extend(
+        [
+            "</tbody>",
+            "</table>",
+            "</div>",
+        ]
+    )
+
+    return "".join(html_parts)
 
 def build_distribution_histogram(
     parametric_values,
@@ -279,6 +399,19 @@ def render_monte_carlo(
         results["bootstrap_paths"]
     ).T
 
+    simulation_start_date = results.get(
+        "simulation_start_date"
+    )
+
+    simulation_end_date = results.get(
+        "simulation_end_date"
+    )
+
+    resolved_time_horizon = results.get(
+        "time_horizon",
+        len(parametric_paths_df),
+    )
+
     parametric_median = np.median(
         parametric_values
     )
@@ -304,6 +437,54 @@ def render_monte_carlo(
         bootstrap_values,
         5,
     )
+
+    if (
+        simulation_start_date is not None
+        and simulation_end_date is not None
+    ):
+        formatted_start_date = pd.Timestamp(
+            simulation_start_date
+        ).strftime("%d %b %Y")
+
+        formatted_end_date = pd.Timestamp(
+            simulation_end_date
+        ).strftime("%d %b %Y")
+
+        st.html(
+            f"""
+            <div class="rg-analysis-state is-current">
+                <span class="rg-analysis-state-dot"></span>
+
+                <strong>Forecast window</strong>
+
+                <span>
+                    {formatted_start_date}
+                    →
+                    {formatted_end_date}
+                    ·
+                    {resolved_time_horizon:,}
+                    simulated periods
+                </span>
+            </div>
+            """
+        )
+
+    else:
+        st.html(
+            f"""
+            <div class="rg-analysis-state is-current">
+                <span class="rg-analysis-state-dot"></span>
+
+                <strong>Forecast horizon</strong>
+
+                <span>
+                    {resolved_time_horizon:,}
+                    simulated periods from the final
+                    historical market observation.
+                </span>
+            </div>
+            """
+        )
 
     metric_strip = "".join(
         [
@@ -418,9 +599,23 @@ def render_monte_carlo(
         ),
     )
 
-    st.dataframe(
-        results["monte_carlo_comparison"],
-        use_container_width=True,
+    monte_carlo_comparison = (
+        results["monte_carlo_comparison"]
+        .copy()
+    )
+
+    monte_carlo_table_html = (
+        build_financial_table_html(
+            dataframe=monte_carlo_comparison,
+            index_title="Simulation model",
+            value_formatter=format_monte_carlo_metric,
+            tone_resolver=get_monte_carlo_cell_tone,
+            compact=True,
+        )
+    )
+
+    st.html(
+        monte_carlo_table_html
     )
 
     # =========================
@@ -448,32 +643,49 @@ def render_monte_carlo(
         )
     )
 
-    st.dataframe(
-        distribution_summary,
-        use_container_width=True,
+    distribution_summary_for_display = (
+        distribution_summary.T
     )
 
+    distribution_table_html = (
+        build_financial_table_html(
+            dataframe=distribution_summary_for_display,
+            index_title="Simulation model",
+            value_formatter=format_distribution_statistic,
+            compact=True,
+        )
+    )
+
+    st.html(
+        distribution_table_html
+    )
     # =========================
     # PARAMETRIC FAN CHART
     # =========================
 
     render_chart_heading(
         eyebrow="PARAMETRIC MODEL",
-        title="Parametric scenario paths",
+        title="Parametric scenario range",
         description=(
-            f"{fan_chart_lines} percentile line(s) displayed "
-            f"from {n_simulations:,} simulations."
+            f"Median path and percentile uncertainty bands "
+            f"derived from {n_simulations:,} simulations."
         ),
     )
 
-    parametric_fan_chart = build_fan_chart(
-        parametric_paths_df,
-        fan_chart_lines,
+    parametric_fan_chart = (
+        build_monte_carlo_fan_chart(
+            paths_df=parametric_paths_df,
+            fan_chart_lines=fan_chart_lines,
+            initial_value=initial_value,
+            model_name="Parametric",
+            accent_color="#35C7FF",
+        )
     )
 
-    st.line_chart(
+    st.altair_chart(
         parametric_fan_chart,
-        use_container_width=True,
+        width="stretch",
+        theme=None,
     )
 
     # =========================
@@ -482,21 +694,27 @@ def render_monte_carlo(
 
     render_chart_heading(
         eyebrow="HISTORICAL BOOTSTRAP",
-        title="Bootstrap scenario paths",
+        title="Bootstrap scenario range",
         description=(
-            f"{fan_chart_lines} percentile line(s) displayed "
-            f"from {n_simulations:,} simulations."
+            f"Median path and percentile uncertainty bands "
+            f"derived from {n_simulations:,} resampled scenarios."
         ),
     )
 
-    bootstrap_fan_chart = build_fan_chart(
-        bootstrap_paths_df,
-        fan_chart_lines,
+    bootstrap_fan_chart = (
+        build_monte_carlo_fan_chart(
+            paths_df=bootstrap_paths_df,
+            fan_chart_lines=fan_chart_lines,
+            initial_value=initial_value,
+            model_name="Bootstrap",
+            accent_color="#68DDB2",
+        )
     )
 
-    st.line_chart(
+    st.altair_chart(
         bootstrap_fan_chart,
-        use_container_width=True,
+        width="stretch",
+        theme=None,
     )
 
     # =========================
@@ -505,22 +723,26 @@ def render_monte_carlo(
 
     render_chart_heading(
         eyebrow="OUTCOME DISTRIBUTION",
-        title="Terminal value histogram",
+        title="Terminal value distribution",
         description=(
-            "Percentage of scenarios falling inside each "
-            "terminal portfolio-value interval."
+            "Comparison of simulated terminal outcomes, "
+            "including initial capital and model medians."
         ),
     )
 
-    histogram_df = build_distribution_histogram(
-        parametric_values=parametric_values,
-        bootstrap_values=bootstrap_values,
-        bins=40,
+    terminal_distribution_chart = (
+        build_terminal_distribution_chart(
+            parametric_values=parametric_values,
+            bootstrap_values=bootstrap_values,
+            initial_value=initial_value,
+            bins=45,
+        )
     )
 
-    st.bar_chart(
-        histogram_df,
-        use_container_width=True,
+    st.altair_chart(
+        terminal_distribution_chart,
+        width="stretch",
+        theme=None,
     )
 
     with st.expander(

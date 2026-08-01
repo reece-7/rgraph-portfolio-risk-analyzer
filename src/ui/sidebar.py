@@ -75,6 +75,30 @@ def render_sidebar():
             value=pd.to_datetime("2018-01-01"),
         )
 
+        historical_end_mode = st.selectbox(
+            "Historical end",
+            options=[
+                "Latest available",
+                "Custom date",
+            ],
+            index=0,
+            help=(
+                "Latest available uses the most recent market data. "
+                "Custom date allows an analysis as of a past date."
+            ),
+        )
+
+        if historical_end_mode == "Custom date":
+            end_date = st.date_input(
+                "Historical end date",
+                value=pd.Timestamp.today().date(),
+                min_value=start_date,
+                max_value=pd.Timestamp.today().date(),
+            )
+
+        else:
+            end_date = None
+            
         benchmark_ticker = st.text_input(
             "Benchmark ticker",
             value="SPY",
@@ -108,14 +132,71 @@ def render_sidebar():
             ),
         )
 
-        time_horizon = st.number_input(
-            "Forecast horizon",
-            min_value=21,
-            max_value=2520,
-            value=252,
-            step=21,
-            help="Forecast horizon expressed in trading days.",
+        forecast_mode = st.segmented_control(
+            "Forecast horizon mode",
+            options=[
+                "Target date",
+                "Trading days",
+            ],
+            default="Target date",
+            width="stretch",
         )
+
+        forecast_anchor = pd.Timestamp(
+            end_date
+            if end_date is not None
+            else pd.Timestamp.today().date()
+        ).normalize()
+
+        if forecast_mode == "Target date":
+            default_simulation_end = (
+                forecast_anchor
+                + pd.DateOffset(years=1)
+            ).date()
+
+            simulation_end_date = st.date_input(
+                "Simulation end date",
+                value=default_simulation_end,
+                min_value=(
+                    forecast_anchor
+                    + pd.Timedelta(days=21)
+                ).date(),
+                help=(
+                    "The Monte Carlo scenarios will extend "
+                    "approximately to this future date."
+                ),
+            )
+
+            # Temporary value. The engine recalculates the
+            # exact horizon from the selected target date.
+            time_horizon = 252
+
+            forecast_calendar_days = (
+                pd.Timestamp(simulation_end_date)
+                - forecast_anchor
+            ).days
+
+            if forecast_calendar_days > 1095:
+                st.caption(
+                    "Long-horizon scenario: uncertainty and "
+                    "model sensitivity increase materially "
+                    "beyond three years."
+                )
+
+        else:
+            simulation_end_date = None
+
+            time_horizon = st.number_input(
+                "Forecast horizon",
+                min_value=21,
+                max_value=2520,
+                value=252,
+                step=21,
+                help=(
+                    "Forecast horizon expressed in "
+                    "simulated periods."
+                ),
+            )
 
         # =========================
         # ASSUMPTIONS
@@ -277,9 +358,12 @@ def render_sidebar():
     return {
         "initial_value": float(initial_value),
         "start_date": start_date,
+        "end_date": end_date,
         "benchmark_ticker": benchmark_ticker,
         "n_simulations": int(n_simulations),
         "fan_chart_lines": int(fan_chart_lines),
+        "forecast_mode": forecast_mode,
+        "simulation_end_date": simulation_end_date,
         "time_horizon": int(time_horizon),
         "risk_free_rate": (
             float(risk_free_rate_percent) / 100

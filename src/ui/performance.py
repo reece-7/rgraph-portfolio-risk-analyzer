@@ -1,6 +1,15 @@
 import pandas as pd
 import streamlit as st
 
+from src.ui.charts import (
+    build_daily_returns_chart,
+    build_drawdown_chart,
+    build_performance_value_chart,
+)
+
+from src.ui.tables import (
+    render_financial_table,
+)
 
 def to_series(data, name):
     """
@@ -258,45 +267,25 @@ def render_performance(results):
         index=["Custom Portfolio"],
     )
 
-    formatted_summary = performance_summary.copy()
-
-    percentage_columns = [
-        "Total Return",
-        "Annualized Return",
-        "Annualized Volatility",
-        "Maximum Drawdown",
-        "Historical VaR 95%",
-        "Historical Expected Shortfall 95%",
-    ]
-
-    for column in percentage_columns:
-        if column in formatted_summary.columns:
-            formatted_summary[column] = (
-                formatted_summary[column]
-                .map(format_percentage)
-            )
-
-    if "Final Value" in formatted_summary.columns:
-        formatted_summary["Final Value"] = (
-            formatted_summary["Final Value"]
-            .map(lambda value: f"${value:,.0f}")
-        )
-
-    if "Sharpe Ratio" in formatted_summary.columns:
-        formatted_summary["Sharpe Ratio"] = (
-            formatted_summary["Sharpe Ratio"]
-            .map(
-                lambda value: (
-                    "—"
-                    if pd.isna(value)
-                    else f"{value:.2f}"
-                )
-            )
-        )
-
-    st.dataframe(
-        formatted_summary,
-        use_container_width=True,
+    render_financial_table(
+        performance_summary,
+        index_label="Portfolio",
+        percent_columns=[
+            "Total Return",
+            "Annualized Return",
+            "Annualized Volatility",
+            "Maximum Drawdown",
+            "Historical VaR 95%",
+            "Historical Expected Shortfall 95%",
+        ],
+        currency_columns=[
+            "Initial Value",
+            "Final Value",
+        ],
+        ratio_columns=[
+            "Sharpe Ratio",
+        ],
+        key="performance_summary_table",
     )
 
     # =========================
@@ -312,9 +301,16 @@ def render_performance(results):
         ),
     )
 
-    st.line_chart(
-        portfolio_values,
-        use_container_width=True,
+    portfolio_value_chart = (
+        build_performance_value_chart(
+            portfolio_values
+        )
+    )
+
+    st.altair_chart(
+        portfolio_value_chart,
+        width="stretch",
+        theme=None,
     )
 
     # =========================
@@ -330,9 +326,16 @@ def render_performance(results):
         ),
     )
 
-    st.area_chart(
-        drawdowns,
-        use_container_width=True,
+    drawdown_chart = (
+        build_drawdown_chart(
+            drawdowns
+        )
+    )
+
+    st.altair_chart(
+        drawdown_chart,
+        width="stretch",
+        theme=None,
     )
 
     # =========================
@@ -348,9 +351,16 @@ def render_performance(results):
         ),
     )
 
-    st.line_chart(
-        portfolio_returns,
-        use_container_width=True,
+    daily_returns_chart = (
+        build_daily_returns_chart(
+            portfolio_returns
+        )
+    )
+
+    st.altair_chart(
+        daily_returns_chart,
+        width="stretch",
+        theme=None,
     )
 
     with st.expander("How to interpret performance analysis"):

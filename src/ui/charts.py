@@ -1,6 +1,6 @@
 import altair as alt
+import numpy as np
 import pandas as pd
-
 
 # Allow charts to use the complete Efficient Frontier dataset.
 alt.data_transformers.disable_max_rows()
@@ -965,9 +965,7 @@ def build_rebalancing_heatmap(
     value_title,
 ):
     """
-    Builds a Strategy x Transaction Cost Rate heatmap.
-
-    Used for Cost Drag and Total Transaction Costs.
+    Builds a warm Strategy x Transaction Cost Rate heatmap.
     """
 
     required_columns = [
@@ -988,30 +986,20 @@ def build_rebalancing_heatmap(
             + ", ".join(missing_columns)
         )
 
-    heatmap_df = (
-        transaction_cost_summary[
-            required_columns
-        ]
-        .copy()
-    )
+    heatmap_df = transaction_cost_summary[
+        required_columns
+    ].copy()
 
     heatmap_df[value_column] = pd.to_numeric(
         heatmap_df[value_column],
         errors="coerce",
     )
 
-    heatmap_df["Cost Rate Numeric"] = (
+    heatmap_df["Cost Rate Numeric"] = pd.to_numeric(
         heatmap_df["Transaction Cost Rate"]
         .astype(str)
-        .str.replace(
-            "%",
-            "",
-            regex=False,
-        )
-        .pipe(
-            pd.to_numeric,
-            errors="coerce",
-        )
+        .str.replace("%", "", regex=False),
+        errors="coerce",
     )
 
     heatmap_df = (
@@ -1040,27 +1028,6 @@ def build_rebalancing_heatmap(
         lambda value: f"${value:,.0f}"
     )
 
-    maximum_value = heatmap_df[
-        value_column
-    ].max()
-
-    text_threshold = (
-        maximum_value * 0.58
-        if maximum_value > 0
-        else 0
-    )
-
-    heatmap_df["Text Color"] = heatmap_df[
-        value_column
-    ].apply(
-        lambda value: (
-            "#07111F"
-            if value >= text_threshold
-            and maximum_value > 0
-            else "#DCE8F1"
-        )
-    )
-
     cost_rate_order = (
         heatmap_df[
             [
@@ -1069,9 +1036,7 @@ def build_rebalancing_heatmap(
             ]
         ]
         .drop_duplicates()
-        .sort_values(
-            "Cost Rate Numeric"
-        )[
+        .sort_values("Cost Rate Numeric")[
             "Transaction Cost Rate"
         ]
         .tolist()
@@ -1084,9 +1049,11 @@ def build_rebalancing_heatmap(
         "Annual Rebalancing",
     ]
 
-    available_strategies = heatmap_df[
-        "Strategy"
-    ].drop_duplicates().tolist()
+    available_strategies = (
+        heatmap_df["Strategy"]
+        .drop_duplicates()
+        .tolist()
+    )
 
     strategy_order = [
         strategy
@@ -1098,6 +1065,14 @@ def build_rebalancing_heatmap(
         strategy
         for strategy in available_strategies
         if strategy not in strategy_order
+    )
+
+    maximum_value = heatmap_df[value_column].max()
+
+    text_threshold = (
+        maximum_value * 0.55
+        if maximum_value > 0
+        else 0
     )
 
     base = alt.Chart(
@@ -1126,7 +1101,6 @@ def build_rebalancing_heatmap(
     cells = (
         base
         .mark_rect(
-            cornerRadius=5,
             stroke="#07111F",
             strokeWidth=3,
         )
@@ -1135,9 +1109,12 @@ def build_rebalancing_heatmap(
                 f"{value_column}:Q",
                 title=value_title,
                 scale=alt.Scale(
+                    domainMin=0,
                     range=[
-                        "#102131",
-                        "#17445A",
+                        "#0B1724",
+                        "#12304A",
+                        "#17577A",
+                        "#168EAA",
                         "#35C7FF",
                         "#68DDB2",
                     ],
@@ -1150,7 +1127,7 @@ def build_rebalancing_heatmap(
                 ),
                 alt.Tooltip(
                     "Transaction Cost Rate:N",
-                    title="Cost Rate",
+                    title="Cost rate",
                 ),
                 alt.Tooltip(
                     f"{value_column}:Q",
@@ -1164,7 +1141,6 @@ def build_rebalancing_heatmap(
     labels = (
         base
         .mark_text(
-            baseline="middle",
             font="Manrope",
             fontSize=11,
             fontWeight=600,
@@ -1173,10 +1149,10 @@ def build_rebalancing_heatmap(
             text=alt.Text(
                 "Display Value:N",
             ),
-            color=alt.Color(
-                "Text Color:N",
-                scale=None,
-                legend=None,
+            color=alt.condition(
+                f"datum['{value_column}'] >= {text_threshold}",
+                alt.value("#07111F"),
+                alt.value("#DCE8F1"),
             ),
         )
     )
@@ -1192,6 +1168,961 @@ def build_rebalancing_heatmap(
                 len(strategy_order) * 68,
             ),
         )
+    )
+
+    return apply_rgraph_chart_style(chart)
+
+def build_terminal_distribution_chart(
+    parametric_values,
+    bootstrap_values,
+    initial_value,
+    bins=45,
+):
+    """
+    Builds an overlaid terminal-value distribution chart
+    for parametric and bootstrap Monte Carlo simulations.
+    """
+
+    parametric_values = np.asarray(
+        parametric_values,
+        dtype=float,
+    )
+
+    bootstrap_values = np.asarray(
+        bootstrap_values,
+        dtype=float,
+    )
+
+    parametric_values = parametric_values[
+        np.isfinite(parametric_values)
+    ]
+
+    bootstrap_values = bootstrap_values[
+        np.isfinite(bootstrap_values)
+    ]
+
+    if (
+        len(parametric_values) == 0
+        or len(bootstrap_values) == 0
+    ):
+        raise ValueError(
+            "Monte Carlo terminal values are not available."
+        )
+
+    combined_values = np.concatenate(
+        [
+            parametric_values,
+            bootstrap_values,
+        ]
+    )
+
+    lower_bound = combined_values.min()
+    upper_bound = combined_values.max()
+
+    if lower_bound == upper_bound:
+        upper_bound = lower_bound + 1
+
+    bin_edges = np.linspace(
+        lower_bound,
+        upper_bound,
+        bins + 1,
+    )
+
+    parametric_counts, _ = np.histogram(
+        parametric_values,
+        bins=bin_edges,
+    )
+
+    bootstrap_counts, _ = np.histogram(
+        bootstrap_values,
+        bins=bin_edges,
+    )
+
+    bin_centers = (
+        bin_edges[:-1]
+        + bin_edges[1:]
+    ) / 2
+
+    parametric_df = pd.DataFrame(
+        {
+            "Final Value": bin_centers,
+            "Bin Start": bin_edges[:-1],
+            "Bin End": bin_edges[1:],
+            "Share": (
+                parametric_counts
+                / len(parametric_values)
+                * 100
+            ),
+            "Model": "Parametric",
+        }
+    )
+
+    bootstrap_df = pd.DataFrame(
+        {
+            "Final Value": bin_centers,
+            "Bin Start": bin_edges[:-1],
+            "Bin End": bin_edges[1:],
+            "Share": (
+                bootstrap_counts
+                / len(bootstrap_values)
+                * 100
+            ),
+            "Model": "Bootstrap",
+        }
+    )
+
+    distribution_df = pd.concat(
+        [
+            parametric_df,
+            bootstrap_df,
+        ],
+        ignore_index=True,
+    )
+
+    model_scale = alt.Scale(
+        domain=[
+            "Parametric",
+            "Bootstrap",
+        ],
+        range=[
+            "#35C7FF",
+            "#68DDB2",
+        ],
+    )
+
+    base = (
+        alt.Chart(distribution_df)
+        .encode(
+            x=alt.X(
+                "Final Value:Q",
+                title="Terminal portfolio value",
+                axis=alt.Axis(
+                    format="$,.0f",
+                ),
+                scale=alt.Scale(
+                    zero=False,
+                ),
+            ),
+            y=alt.Y(
+                "Share:Q",
+                title="Share of simulations",
+                axis=alt.Axis(
+                    labelExpr="datum.value + '%'",
+                ),
+            ),
+            color=alt.Color(
+                "Model:N",
+                title=None,
+                scale=model_scale,
+            ),
+        )
+    )
+
+    distribution_areas = (
+        base
+        .mark_area(
+            opacity=0.18,
+            interpolate="monotone",
+        )
+    )
+
+    distribution_lines = (
+        base
+        .mark_line(
+            strokeWidth=2.4,
+            interpolate="monotone",
+        )
+        .encode(
+            tooltip=[
+                alt.Tooltip(
+                    "Model:N",
+                    title="Model",
+                ),
+                alt.Tooltip(
+                    "Bin Start:Q",
+                    title="Range from",
+                    format="$,.0f",
+                ),
+                alt.Tooltip(
+                    "Bin End:Q",
+                    title="Range to",
+                    format="$,.0f",
+                ),
+                alt.Tooltip(
+                    "Share:Q",
+                    title="Simulations",
+                    format=".2f",
+                ),
+            ]
+        )
+    )
+
+    reference_df = pd.DataFrame(
+        {
+            "Reference": [
+                "Initial Capital",
+                "Parametric Median",
+                "Bootstrap Median",
+            ],
+            "Value": [
+                float(initial_value),
+                float(np.median(parametric_values)),
+                float(np.median(bootstrap_values)),
+            ],
+        }
+    )
+
+    reference_scale = alt.Scale(
+        domain=[
+            "Initial Capital",
+            "Parametric Median",
+            "Bootstrap Median",
+        ],
+        range=[
+            "#F4C95D",
+            "#35C7FF",
+            "#68DDB2",
+        ],
+    )
+
+    reference_rules = (
+        alt.Chart(reference_df)
+        .mark_rule(
+            strokeWidth=1.8,
+            strokeDash=[6, 5],
+        )
+        .encode(
+            x=alt.X("Value:Q"),
+            color=alt.Color(
+                "Reference:N",
+                title="Reference",
+                scale=reference_scale,
+            ),
+            tooltip=[
+                alt.Tooltip(
+                    "Reference:N",
+                    title="Reference",
+                ),
+                alt.Tooltip(
+                    "Value:Q",
+                    title="Value",
+                    format="$,.2f",
+                ),
+            ],
+        )
+    )
+
+    chart = (
+        alt.layer(
+            distribution_areas,
+            distribution_lines,
+            reference_rules,
+        )
+        .resolve_scale(
+            color="independent",
+        )
+        .properties(
+            height=420,
+        )
+        .interactive()
+    )
+
+    return apply_rgraph_chart_style(chart)
+
+def build_monte_carlo_fan_chart(
+    paths_df,
+    fan_chart_lines,
+    initial_value,
+    model_name,
+    accent_color,
+):
+    """
+    Builds a Monte Carlo fan chart using percentile bands.
+
+    paths_df must have:
+    - rows: forecast days
+    - columns: individual simulations
+    """
+
+    paths_df = paths_df.copy()
+
+    percentile_df = pd.DataFrame(
+        {
+            "Day": np.arange(
+                1,
+                len(paths_df) + 1,
+            ),
+            "P05": paths_df.quantile(
+                0.05,
+                axis=1,
+            ).to_numpy(),
+            "P25": paths_df.quantile(
+                0.25,
+                axis=1,
+            ).to_numpy(),
+            "Median": paths_df.quantile(
+                0.50,
+                axis=1,
+            ).to_numpy(),
+            "P75": paths_df.quantile(
+                0.75,
+                axis=1,
+            ).to_numpy(),
+            "P95": paths_df.quantile(
+                0.95,
+                axis=1,
+            ).to_numpy(),
+        }
+    )
+
+    initial_row = pd.DataFrame(
+        {
+            "Day": [0],
+            "P05": [initial_value],
+            "P25": [initial_value],
+            "Median": [initial_value],
+            "P75": [initial_value],
+            "P95": [initial_value],
+        }
+    )
+
+    percentile_df = pd.concat(
+        [
+            initial_row,
+            percentile_df,
+        ],
+        ignore_index=True,
+    )
+
+    base = alt.Chart(
+        percentile_df
+    ).encode(
+        x=alt.X(
+            "Day:Q",
+            title="Forecast day",
+            axis=alt.Axis(
+                tickMinStep=1,
+            ),
+        )
+    )
+
+    chart_layers = []
+
+    # =========================
+    # OUTER 5–95% BAND
+    # =========================
+
+    if fan_chart_lines == 5:
+        outer_band = (
+            base
+            .mark_area(
+                color=accent_color,
+                opacity=0.10,
+                interpolate="monotone",
+            )
+            .encode(
+                y=alt.Y(
+                    "P05:Q",
+                    title="Portfolio value",
+                    axis=alt.Axis(
+                        format="$,.0f",
+                    ),
+                    scale=alt.Scale(
+                        zero=False,
+                    ),
+                ),
+                y2=alt.Y2(
+                    "P95:Q",
+                ),
+                tooltip=[
+                    alt.Tooltip(
+                        "Day:Q",
+                        title="Forecast day",
+                        format=".0f",
+                    ),
+                    alt.Tooltip(
+                        "P05:Q",
+                        title="5th percentile",
+                        format="$,.0f",
+                    ),
+                    alt.Tooltip(
+                        "P95:Q",
+                        title="95th percentile",
+                        format="$,.0f",
+                    ),
+                ],
+            )
+        )
+
+        outer_lower_line = (
+            base
+            .mark_line(
+                color=accent_color,
+                opacity=0.30,
+                strokeWidth=1,
+                strokeDash=[4, 5],
+                interpolate="monotone",
+            )
+            .encode(
+                y=alt.Y(
+                    "P05:Q",
+                    scale=alt.Scale(
+                        zero=False,
+                    ),
+                )
+            )
+        )
+
+        outer_upper_line = (
+            base
+            .mark_line(
+                color=accent_color,
+                opacity=0.30,
+                strokeWidth=1,
+                strokeDash=[4, 5],
+                interpolate="monotone",
+            )
+            .encode(
+                y=alt.Y(
+                    "P95:Q",
+                    scale=alt.Scale(
+                        zero=False,
+                    ),
+                )
+            )
+        )
+
+        chart_layers.extend(
+            [
+                outer_band,
+                outer_lower_line,
+                outer_upper_line,
+            ]
+        )
+
+    # =========================
+    # INNER 25–75% BAND
+    # =========================
+
+    if fan_chart_lines in [3, 5]:
+        inner_band = (
+            base
+            .mark_area(
+                color=accent_color,
+                opacity=0.23,
+                interpolate="monotone",
+            )
+            .encode(
+                y=alt.Y(
+                    "P25:Q",
+                    title="Portfolio value",
+                    axis=alt.Axis(
+                        format="$,.0f",
+                    ),
+                    scale=alt.Scale(
+                        zero=False,
+                    ),
+                ),
+                y2=alt.Y2(
+                    "P75:Q",
+                ),
+                tooltip=[
+                    alt.Tooltip(
+                        "Day:Q",
+                        title="Forecast day",
+                        format=".0f",
+                    ),
+                    alt.Tooltip(
+                        "P25:Q",
+                        title="25th percentile",
+                        format="$,.0f",
+                    ),
+                    alt.Tooltip(
+                        "Median:Q",
+                        title="Median",
+                        format="$,.0f",
+                    ),
+                    alt.Tooltip(
+                        "P75:Q",
+                        title="75th percentile",
+                        format="$,.0f",
+                    ),
+                ],
+            )
+        )
+
+        inner_lower_line = (
+            base
+            .mark_line(
+                color=accent_color,
+                opacity=0.48,
+                strokeWidth=1.1,
+                interpolate="monotone",
+            )
+            .encode(
+                y=alt.Y(
+                    "P25:Q",
+                    scale=alt.Scale(
+                        zero=False,
+                    ),
+                )
+            )
+        )
+
+        inner_upper_line = (
+            base
+            .mark_line(
+                color=accent_color,
+                opacity=0.48,
+                strokeWidth=1.1,
+                interpolate="monotone",
+            )
+            .encode(
+                y=alt.Y(
+                    "P75:Q",
+                    scale=alt.Scale(
+                        zero=False,
+                    ),
+                )
+            )
+        )
+
+        chart_layers.extend(
+            [
+                inner_band,
+                inner_lower_line,
+                inner_upper_line,
+            ]
+        )
+
+    # =========================
+    # MEDIAN
+    # =========================
+
+    median_line = (
+        base
+        .mark_line(
+            color=accent_color,
+            strokeWidth=2.8,
+            interpolate="monotone",
+        )
+        .encode(
+            y=alt.Y(
+                "Median:Q",
+                title="Portfolio value",
+                axis=alt.Axis(
+                    format="$,.0f",
+                ),
+                scale=alt.Scale(
+                    zero=False,
+                ),
+            ),
+            tooltip=[
+                alt.Tooltip(
+                    "Day:Q",
+                    title="Forecast day",
+                    format=".0f",
+                ),
+                alt.Tooltip(
+                    "Median:Q",
+                    title=f"{model_name} median",
+                    format="$,.0f",
+                ),
+            ],
+        )
+    )
+
+    chart_layers.append(
+        median_line
+    )
+
+    # =========================
+    # INITIAL CAPITAL
+    # =========================
+
+    initial_capital_df = pd.DataFrame(
+        {
+            "Initial Capital": [
+                float(initial_value)
+            ]
+        }
+    )
+
+    initial_capital_rule = (
+        alt.Chart(initial_capital_df)
+        .mark_rule(
+            color="#F4C95D",
+            opacity=0.78,
+            strokeWidth=1.3,
+            strokeDash=[6, 5],
+        )
+        .encode(
+            y=alt.Y(
+                "Initial Capital:Q",
+            ),
+            tooltip=[
+                alt.Tooltip(
+                    "Initial Capital:Q",
+                    title="Initial capital",
+                    format="$,.0f",
+                )
+            ],
+        )
+    )
+
+    chart_layers.append(
+        initial_capital_rule
+    )
+
+    chart = (
+        alt.layer(
+            *chart_layers
+        )
+        .properties(
+            height=410,
+        )
+        .interactive()
+    )
+
+    return apply_rgraph_chart_style(chart)
+
+def build_performance_value_chart(
+    portfolio_values,
+):
+    """
+    Builds the historical portfolio value chart.
+    """
+
+    chart_df = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(
+                portfolio_values.index
+            ),
+            "Portfolio Value": pd.to_numeric(
+                portfolio_values.to_numpy(),
+                errors="coerce",
+            ),
+        }
+    ).dropna()
+
+    base = (
+        alt.Chart(chart_df)
+        .encode(
+            x=alt.X(
+                "Date:T",
+                title=None,
+                axis=alt.Axis(
+                    format="%b %Y",
+                    labelAngle=0,
+                ),
+            )
+        )
+    )
+
+    value_area = (
+        base
+        .mark_area(
+            color="#35C7FF",
+            opacity=0.10,
+            interpolate="monotone",
+        )
+        .encode(
+            y=alt.Y(
+                "Portfolio Value:Q",
+                title="Portfolio value",
+                axis=alt.Axis(
+                    format="$,.0f",
+                ),
+                scale=alt.Scale(
+                    zero=False,
+                ),
+            )
+        )
+    )
+
+    value_line = (
+        base
+        .mark_line(
+            color="#35C7FF",
+            strokeWidth=2.3,
+            interpolate="monotone",
+        )
+        .encode(
+            y=alt.Y(
+                "Portfolio Value:Q",
+                scale=alt.Scale(
+                    zero=False,
+                ),
+            ),
+            tooltip=[
+                alt.Tooltip(
+                    "Date:T",
+                    title="Date",
+                    format="%d %b %Y",
+                ),
+                alt.Tooltip(
+                    "Portfolio Value:Q",
+                    title="Portfolio value",
+                    format="$,.2f",
+                ),
+            ],
+        )
+    )
+
+    latest_point = (
+        alt.Chart(
+            chart_df.tail(1)
+        )
+        .mark_circle(
+            color="#68DDB2",
+            size=90,
+            stroke="#07111F",
+            strokeWidth=2,
+        )
+        .encode(
+            x=alt.X(
+                "Date:T",
+            ),
+            y=alt.Y(
+                "Portfolio Value:Q",
+            ),
+            tooltip=[
+                alt.Tooltip(
+                    "Date:T",
+                    title="Latest date",
+                    format="%d %b %Y",
+                ),
+                alt.Tooltip(
+                    "Portfolio Value:Q",
+                    title="Latest value",
+                    format="$,.2f",
+                ),
+            ],
+        )
+    )
+
+    chart = (
+        alt.layer(
+            value_area,
+            value_line,
+            latest_point,
+        )
+        .properties(
+            height=390,
+        )
+        .interactive()
+    )
+
+    return apply_rgraph_chart_style(chart)
+
+
+def build_drawdown_chart(
+    drawdowns,
+):
+    """
+    Builds the historical drawdown area chart.
+    """
+
+    chart_df = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(
+                drawdowns.index
+            ),
+            "Drawdown": pd.to_numeric(
+                drawdowns.to_numpy(),
+                errors="coerce",
+            ),
+        }
+    ).dropna()
+
+    base = (
+        alt.Chart(chart_df)
+        .encode(
+            x=alt.X(
+                "Date:T",
+                title=None,
+                axis=alt.Axis(
+                    format="%b %Y",
+                    labelAngle=0,
+                ),
+            )
+        )
+    )
+
+    drawdown_area = (
+        base
+        .mark_area(
+            color="#35C7FF",
+            opacity=0.18,
+            interpolate="monotone",
+        )
+        .encode(
+            y=alt.Y(
+                "Drawdown:Q",
+                title="Drawdown",
+                axis=alt.Axis(
+                    format=".0%",
+                ),
+                scale=alt.Scale(
+                    zero=True,
+                ),
+            ),
+            tooltip=[
+                alt.Tooltip(
+                    "Date:T",
+                    title="Date",
+                    format="%d %b %Y",
+                ),
+                alt.Tooltip(
+                    "Drawdown:Q",
+                    title="Drawdown",
+                    format=".2%",
+                ),
+            ],
+        )
+    )
+
+    drawdown_line = (
+        base
+        .mark_line(
+            color="#35C7FF",
+            strokeWidth=1.5,
+            interpolate="monotone",
+        )
+        .encode(
+            y=alt.Y(
+                "Drawdown:Q",
+                scale=alt.Scale(
+                    zero=True,
+                ),
+            )
+        )
+    )
+
+    zero_reference = (
+        alt.Chart(
+            pd.DataFrame(
+                {
+                    "Zero": [0.0],
+                }
+            )
+        )
+        .mark_rule(
+            color="#6686A8",
+            opacity=0.75,
+            strokeWidth=1,
+        )
+        .encode(
+            y=alt.Y(
+                "Zero:Q",
+            )
+        )
+    )
+
+    chart = (
+        alt.layer(
+            drawdown_area,
+            drawdown_line,
+            zero_reference,
+        )
+        .properties(
+            height=350,
+        )
+        .interactive()
+    )
+
+    return apply_rgraph_chart_style(chart)
+
+
+def build_daily_returns_chart(
+    portfolio_returns,
+):
+    """
+    Builds a daily return bar chart with a zero reference.
+    """
+
+    chart_df = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(
+                portfolio_returns.index
+            ),
+            "Daily Return": pd.to_numeric(
+                portfolio_returns.to_numpy(),
+                errors="coerce",
+            ),
+        }
+    ).dropna()
+
+    return_bars = (
+        alt.Chart(chart_df)
+        .mark_bar(
+            opacity=0.76,
+        )
+        .encode(
+            x=alt.X(
+                "Date:T",
+                title=None,
+                axis=alt.Axis(
+                    format="%b %Y",
+                    labelAngle=0,
+                ),
+            ),
+            y=alt.Y(
+                "Daily Return:Q",
+                title="Daily return",
+                axis=alt.Axis(
+                    format=".1%",
+                ),
+            ),
+            color=alt.condition(
+                alt.datum["Daily Return"] >= 0,
+                alt.value("#68DDB2"),
+                alt.value("#FF7B8B"),
+            ),
+            tooltip=[
+                alt.Tooltip(
+                    "Date:T",
+                    title="Date",
+                    format="%d %b %Y",
+                ),
+                alt.Tooltip(
+                    "Daily Return:Q",
+                    title="Daily return",
+                    format=".2%",
+                ),
+            ],
+        )
+    )
+
+    zero_reference = (
+        alt.Chart(
+            pd.DataFrame(
+                {
+                    "Zero": [0.0],
+                }
+            )
+        )
+        .mark_rule(
+            color="#7F98AC",
+            opacity=0.75,
+            strokeWidth=1,
+        )
+        .encode(
+            y=alt.Y(
+                "Zero:Q",
+            )
+        )
+    )
+
+    chart = (
+        alt.layer(
+            return_bars,
+            zero_reference,
+        )
+        .properties(
+            height=350,
+        )
+        .interactive()
     )
 
     return apply_rgraph_chart_style(chart)

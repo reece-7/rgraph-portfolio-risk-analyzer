@@ -44,6 +44,7 @@ def analyze_portfolio(
     initial_value=10_000,
     n_simulations=10_000,
     time_horizon=252,
+    simulation_end_date=None,
     trading_days=252,
     risk_free_rate=0.00,
     benchmark_ticker="SPY",
@@ -65,6 +66,59 @@ def analyze_portfolio(
         start_date=start_date,
         end_date=end_date
     )
+
+    historical_start_date = (
+        pd.Timestamp(prices.index[0])
+        .normalize()
+    )
+
+    historical_end_date = (
+        pd.Timestamp(prices.index[-1])
+        .normalize()
+    )
+
+    simulation_start_date = historical_end_date
+
+    resolved_simulation_end_date = None
+
+
+    if simulation_end_date is not None:
+        resolved_simulation_end_date = (
+            pd.Timestamp(simulation_end_date)
+            .normalize()
+        )
+
+        if (
+            resolved_simulation_end_date
+            <= simulation_start_date
+        ):
+            raise ValueError(
+                "Simulation end date must be later than "
+                "the final available historical market date."
+            )
+
+        if trading_days == 365:
+            time_horizon = (
+                resolved_simulation_end_date
+                - simulation_start_date
+            ).days
+
+        else:
+            simulated_dates = pd.bdate_range(
+                start=(
+                    simulation_start_date
+                    + pd.Timedelta(days=1)
+                ),
+                end=resolved_simulation_end_date,
+            )
+
+            time_horizon = len(simulated_dates)
+
+        if time_horizon < 21:
+            raise ValueError(
+                "The selected simulation period must contain "
+                "at least 21 simulated periods."
+            )
 
     # Calculate daily returns
     returns = calculate_daily_returns(prices)
@@ -193,6 +247,11 @@ def analyze_portfolio(
     )
 
     results = {
+        "historical_start_date": historical_start_date,
+        "historical_end_date": historical_end_date,
+        "simulation_start_date": simulation_start_date,
+        "simulation_end_date": resolved_simulation_end_date,
+        "time_horizon": int(time_horizon),
         "prices": prices,
         "returns": returns,
         "portfolio_returns": portfolio_returns,
