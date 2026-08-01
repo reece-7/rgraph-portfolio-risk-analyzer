@@ -2,129 +2,76 @@ import pandas as pd
 import streamlit as st
 
 from src.portfolio_analyzer import analyze_portfolio
-
+from src.ui.home import render_home
+from src.ui.sidebar import render_sidebar
 
 st.set_page_config(
-    page_title="Interactive Portfolio Risk Analyzer",
-    layout="wide"
+    page_title="rGraph | Portfolio Risk Analyzer",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 
-st.title("rGraph")
-st.subheader("Interactive Portfolio Risk Analyzer")
+if "analysis_results" not in st.session_state:
+    st.session_state.analysis_results = None
 
-st.write(
-    """
-    Analyze a custom portfolio using historical returns, Monte Carlo simulations,
-    portfolio optimization, rebalancing analysis, transaction costs, and benchmark sensitivity.
-    """
+if "analysis_inputs" not in st.session_state:
+    st.session_state.analysis_inputs = None
+
+
+@st.cache_data(
+    ttl=3600,
+    max_entries=30,
+    show_spinner=False
 )
+def get_cached_analysis(
+    tickers,
+    weights_items,
+    start_date,
+    initial_value,
+    n_simulations,
+    time_horizon,
+    trading_days,
+    risk_free_rate,
+    benchmark_ticker
+):
+    weights = dict(weights_items)
 
-
-# =========================
-# SIDEBAR INPUTS
-# =========================
-
-st.sidebar.header("Portfolio Inputs")
-
-initial_value = st.sidebar.number_input(
-    "Initial capital",
-    min_value=100.0,
-    value=10_000.0,
-    step=1_000.0
-)
-
-start_date = st.sidebar.date_input(
-    "Start date",
-    value=pd.to_datetime("2018-01-01")
-)
-
-benchmark_ticker = st.sidebar.text_input(
-    "Benchmark ticker",
-    value="SPY"
-).upper().strip()
-
-n_simulations = st.sidebar.number_input(
-    "Number of Monte Carlo simulations",
-    min_value=500,
-    max_value=50_000,
-    value=2_000,
-    step=500
-)
-
-fan_chart_lines = st.sidebar.selectbox(
-    "Monte Carlo fan chart detail",
-    options=[1, 3, 5],
-    index=2,
-    help="Choose how many percentile lines to display in the Monte Carlo fan chart."
-)
-
-time_horizon = st.sidebar.number_input(
-    "Monte Carlo horizon in trading days",
-    min_value=21,
-    max_value=2520,
-    value=252,
-    step=21
-)
-
-risk_free_rate_percent = st.sidebar.number_input(
-    "Risk-free rate (%)",
-    min_value=0.0,
-    max_value=20.0,
-    value=0.0,
-    step=0.25
-)
-
-risk_free_rate = risk_free_rate_percent / 100
-
-trading_days = st.sidebar.selectbox(
-    "Trading days assumption",
-    options=[252, 365],
-    index=0,
-    help="Use 252 for stocks/ETFs and 365 for crypto-heavy portfolios."
-)
-
-
-st.sidebar.header("Assets")
-
-number_of_assets = st.sidebar.number_input(
-    "How many assets are in your portfolio?",
-    min_value=2,
-    max_value=10,
-    value=4,
-    step=1
-)
-
-default_tickers = ["SPY", "QQQ", "TLT", "GLD"]
-default_weights = [40.0, 30.0, 20.0, 10.0]
-
-tickers = []
-weights_percent = []
-
-for i in range(number_of_assets):
-    default_ticker = default_tickers[i] if i < len(default_tickers) else ""
-    default_weight = default_weights[i] if i < len(default_weights) else 0.0
-
-    col1, col2 = st.sidebar.columns(2)
-
-    ticker = col1.text_input(
-        f"Asset {i + 1} ticker",
-        value=default_ticker,
-        key=f"ticker_{i}"
-    ).upper().strip()
-
-    weight = col2.number_input(
-        f"Weight {i + 1} (%)",
-        min_value=0.0,
-        max_value=100.0,
-        value=default_weight,
-        step=1.0,
-        key=f"weight_{i}"
+    return analyze_portfolio(
+        tickers=list(tickers),
+        weights=weights,
+        start_date=start_date,
+        end_date=None,
+        initial_value=initial_value,
+        n_simulations=n_simulations,
+        time_horizon=time_horizon,
+        trading_days=trading_days,
+        risk_free_rate=risk_free_rate,
+        benchmark_ticker=benchmark_ticker,
+        transaction_cost_rates={
+            "0.00%": 0.0000,
+            "0.05%": 0.0005,
+            "0.10%": 0.0010,
+            "0.25%": 0.0025
+        }
     )
 
-    tickers.append(ticker)
-    weights_percent.append(weight)
 
+render_home()
+
+sidebar_inputs = render_sidebar()
+
+initial_value = sidebar_inputs["initial_value"]
+start_date = sidebar_inputs["start_date"]
+benchmark_ticker = sidebar_inputs["benchmark_ticker"]
+n_simulations = sidebar_inputs["n_simulations"]
+fan_chart_lines = sidebar_inputs["fan_chart_lines"]
+time_horizon = sidebar_inputs["time_horizon"]
+risk_free_rate = sidebar_inputs["risk_free_rate"]
+trading_days = sidebar_inputs["trading_days"]
+tickers = sidebar_inputs["tickers"]
+weights_percent = sidebar_inputs["weights_percent"]
 
 portfolio_inputs = [
     (ticker, weight / 100)
@@ -240,24 +187,31 @@ if run_button:
     else:
         with st.spinner("Running portfolio analysis..."):
             try:
-                results = analyze_portfolio(
-                    tickers=valid_tickers,
-                    weights=weights,
+                results = get_cached_analysis(
+                    tickers=tuple(valid_tickers),
+                    weights_items=tuple(sorted(weights.items())),
                     start_date=str(start_date),
-                    end_date=None,
-                    initial_value=initial_value,
+                    initial_value=float(initial_value),
                     n_simulations=int(n_simulations),
                     time_horizon=int(time_horizon),
                     trading_days=int(trading_days),
-                    risk_free_rate=risk_free_rate,
-                    benchmark_ticker=benchmark_ticker,
-                    transaction_cost_rates={
-                        "0.00%": 0.0000,
-                        "0.05%": 0.0005,
-                        "0.10%": 0.0010,
-                        "0.25%": 0.0025
-                    }
+                    risk_free_rate=float(risk_free_rate),
+                    benchmark_ticker=benchmark_ticker
                 )
+
+                st.session_state.analysis_results = results
+
+                st.session_state.analysis_inputs = {
+                    "tickers": valid_tickers,
+                    "weights": weights,
+                    "initial_value": initial_value,
+                    "start_date": str(start_date),
+                    "benchmark_ticker": benchmark_ticker,
+                    "n_simulations": int(n_simulations),
+                    "time_horizon": int(time_horizon),
+                    "trading_days": int(trading_days),
+                    "risk_free_rate": risk_free_rate
+                }
 
                 st.success("Analysis completed successfully.")
 
