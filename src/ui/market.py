@@ -1,6 +1,14 @@
 import pandas as pd
 import streamlit as st
 
+from src.ui.charts import (
+    build_market_growth_chart,
+    build_rolling_beta_chart,
+)
+
+from src.ui.tables import (
+    render_financial_table,
+)
 
 def format_percentage(value):
     """
@@ -384,9 +392,17 @@ def render_market(
             1 + comparison_returns
         ).cumprod() * 100
 
-        st.line_chart(
-            normalized_growth,
-            use_container_width=True,
+        market_growth_chart = (
+            build_market_growth_chart(
+                normalized_growth=normalized_growth,
+                benchmark_ticker=benchmark_ticker,
+            )
+        )
+
+        st.altair_chart(
+            market_growth_chart,
+            width="stretch",
+            theme=None,
         )
 
     else:
@@ -407,34 +423,19 @@ def render_market(
         ),
     )
 
-    formatted_market_summary = (
-        market_summary.copy()
-    )
-
-    for column in [
-        "Annualized Active Return",
-        "Tracking Error",
-    ]:
-        if column in formatted_market_summary.columns:
-            formatted_market_summary[column] = (
-                formatted_market_summary[column]
-                .map(format_percentage)
-            )
-
-    for column in [
-        "Beta vs Benchmark",
-        "Correlation vs Benchmark",
-        "Information Ratio",
-    ]:
-        if column in formatted_market_summary.columns:
-            formatted_market_summary[column] = (
-                formatted_market_summary[column]
-                .map(format_ratio)
-            )
-
-    st.dataframe(
-        formatted_market_summary,
-        use_container_width=True,
+    render_financial_table(
+        market_summary,
+        percent_columns=[
+            "Annualized Active Return",
+            "Tracking Error",
+        ],
+        ratio_columns=[
+            "Beta vs Benchmark",
+            "Correlation vs Benchmark",
+            "Information Ratio",
+        ],
+        hide_index=True,
+        key="market_sensitivity_summary_table",
     )
 
     # =========================
@@ -458,33 +459,17 @@ def render_market(
         """
     )
 
-    formatted_capture_summary = (
-        capture_summary.copy()
-    )
-
-    for column in [
-        "Upside Capture",
-        "Downside Capture",
-    ]:
-        if column in formatted_capture_summary.columns:
-            formatted_capture_summary[column] = (
-                formatted_capture_summary[column]
-                .map(format_percentage)
-            )
-
-    if "Capture Ratio" in formatted_capture_summary.columns:
-        formatted_capture_summary[
-            "Capture Ratio"
-        ] = (
-            formatted_capture_summary[
-                "Capture Ratio"
-            ]
-            .map(format_ratio)
-        )
-
-    st.dataframe(
-        formatted_capture_summary,
-        use_container_width=True,
+    render_financial_table(
+        capture_summary,
+        percent_columns=[
+            "Upside Capture",
+            "Downside Capture",
+        ],
+        ratio_columns=[
+            "Capture Ratio",
+        ],
+        hide_index=True,
+        key="market_capture_summary_table",
     )
 
     # =========================
@@ -500,9 +485,17 @@ def render_market(
         ),
     )
 
-    st.line_chart(
-        rolling_beta,
-        use_container_width=True,
+    rolling_beta_chart = (
+        build_rolling_beta_chart(
+            rolling_beta=rolling_beta,
+            benchmark_ticker=benchmark_ticker,
+        )
+    )
+
+    st.altair_chart(
+        rolling_beta_chart,
+        width="stretch",
+        theme=None,
     )
 
     with st.expander(

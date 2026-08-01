@@ -3,7 +3,12 @@ import streamlit as st
 
 from src.ui.charts import (
     build_rebalancing_heatmap,
+    build_rebalancing_paths_chart,
     build_strategy_lollipop_chart,
+)
+
+from src.ui.tables import (
+    render_financial_table,
 )
 
 def format_currency(value):
@@ -363,9 +368,16 @@ def render_rebalancing(results):
             custom_portfolio_paths
         )
 
-        st.line_chart(
-            strategy_paths_df,
-            use_container_width=True,
+        strategy_paths_chart = (
+            build_rebalancing_paths_chart(
+                strategy_paths_df
+            )
+        )
+
+        st.altair_chart(
+            strategy_paths_chart,
+            width="stretch",
+            theme=None,
         )
 
     else:
@@ -386,53 +398,33 @@ def render_rebalancing(results):
         ),
     )
 
-    formatted_rebalancing_summary = (
-        rebalancing_summary.copy()
+    strategy_summary_table = (
+        rebalancing_summary
+        .drop(
+            columns=[
+                "Total Transaction Costs",
+            ],
+            errors="ignore",
+        )
+        .copy()
     )
 
-    percentage_columns = [
-        "Total Return",
-        "Annualized Return",
-        "Annualized Volatility",
-        "Maximum Drawdown",
-    ]
-
-    currency_columns = [
-        "Final Value",
-        "Total Transaction Costs",
-    ]
-
-    for column in percentage_columns:
-        if column in formatted_rebalancing_summary.columns:
-            formatted_rebalancing_summary[column] = (
-                formatted_rebalancing_summary[column]
-                .map(format_percentage)
-            )
-
-    for column in currency_columns:
-        if column in formatted_rebalancing_summary.columns:
-            formatted_rebalancing_summary[column] = (
-                formatted_rebalancing_summary[column]
-                .map(format_currency)
-            )
-
-    if (
-        "Sharpe Ratio"
-        in formatted_rebalancing_summary.columns
-    ):
-        formatted_rebalancing_summary[
-            "Sharpe Ratio"
-        ] = (
-            formatted_rebalancing_summary[
-                "Sharpe Ratio"
-            ]
-            .map(format_ratio)
-        )
-
-    st.dataframe(
-        formatted_rebalancing_summary,
-        use_container_width=True,
+    render_financial_table(
+        strategy_summary_table,
+        percent_columns=[
+            "Total Return",
+            "Annualized Return",
+            "Annualized Volatility",
+            "Maximum Drawdown",
+        ],
+        currency_columns=[
+            "Final Value",
+        ],
+        ratio_columns=[
+            "Sharpe Ratio",
+        ],
         hide_index=True,
+        key="rebalancing_strategy_summary_table",
     )
 
     # =========================
@@ -473,55 +465,26 @@ def render_rebalancing(results):
         ),
     )
 
-    formatted_transaction_summary = (
-        transaction_cost_summary.copy()
-    )
-
-    transaction_percentage_columns = [
-        "Total Return",
-        "Annualized Return",
-        "Annualized Volatility",
-        "Maximum Drawdown",
-    ]
-
-    transaction_currency_columns = [
-        "Final Value",
-        "Total Transaction Costs",
-        "Zero Cost Final Value",
-        "Cost Drag",
-    ]
-
-    for column in transaction_percentage_columns:
-        if column in formatted_transaction_summary.columns:
-            formatted_transaction_summary[column] = (
-                formatted_transaction_summary[column]
-                .map(format_percentage)
-            )
-
-    for column in transaction_currency_columns:
-        if column in formatted_transaction_summary.columns:
-            formatted_transaction_summary[column] = (
-                formatted_transaction_summary[column]
-                .map(format_currency)
-            )
-
-    if (
-        "Sharpe Ratio"
-        in formatted_transaction_summary.columns
-    ):
-        formatted_transaction_summary[
-            "Sharpe Ratio"
-        ] = (
-            formatted_transaction_summary[
-                "Sharpe Ratio"
-            ]
-            .map(format_ratio)
-        )
-
-    st.dataframe(
-        formatted_transaction_summary,
-        use_container_width=True,
+    render_financial_table(
+        transaction_cost_summary,
+        percent_columns=[
+            "Total Return",
+            "Annualized Return",
+            "Annualized Volatility",
+            "Maximum Drawdown",
+        ],
+        currency_columns=[
+            "Final Value",
+            "Total Transaction Costs",
+            "Zero Cost Final Value",
+            "Cost Drag",
+        ],
+        ratio_columns=[
+            "Sharpe Ratio",
+        ],
         hide_index=True,
+        height=480,
+        key="transaction_cost_summary_table",
     )
 
     # =========================

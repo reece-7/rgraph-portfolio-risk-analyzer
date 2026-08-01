@@ -4,6 +4,11 @@ import streamlit as st
 
 from src.ui.charts import (
     build_horizontal_allocation_chart,
+    build_performance_value_chart,
+)
+
+from src.ui.tables import (
+    render_financial_table,
 )
 
 def format_currency(value):
@@ -38,6 +43,28 @@ def format_ratio(value):
 
     return f"{value:.2f}"
 
+def render_chart_heading(
+    eyebrow,
+    title,
+    description,
+):
+    """
+    Renders the shared heading used above
+    Overview charts and tables.
+    """
+
+    st.html(
+        f"""
+        <div class="rg-chart-heading">
+            <div>
+                <span>{eyebrow}</span>
+                <h3>{title}</h3>
+            </div>
+
+            <p>{description}</p>
+        </div>
+        """
+    )
 
 def render_metric_item(
     label,
@@ -203,10 +230,26 @@ def render_overview(
         """
     )
 
-    st.subheader("Portfolio Allocation")
+    # =========================
+    # PORTFOLIO ALLOCATION
+    # =========================
+
+    render_chart_heading(
+        eyebrow="CURRENT COMPOSITION",
+        title="Portfolio allocation",
+        description=(
+            "Capital distribution across the assets "
+            "included in the latest completed analysis."
+        ),
+    )
 
     allocation_df = (
-        setup_df[["Ticker", "Weight (%)"]]
+        setup_df[
+            [
+                "Ticker",
+                "Weight (%)",
+            ]
+        ]
         .set_index("Ticker")
     )
 
@@ -219,12 +262,55 @@ def render_overview(
 
     st.altair_chart(
         allocation_chart,
-        use_container_width=True,
+        width="stretch",
+        theme=None,
     )
 
-    st.subheader("Portfolio Value Over Time")
+    with st.expander(
+        "View allocation data"
+    ):
+        render_financial_table(
+            allocation_df,
+            index_label="Ticker",
+            percentage_point_columns=[
+                "Weight (%)",
+            ],
+            key="overview_allocation_table",
+        )
 
-    st.line_chart(
-        results["portfolio_values"],
-        use_container_width=True,
+    # =========================
+    # PORTFOLIO VALUE
+    # =========================
+
+    render_chart_heading(
+        eyebrow="HISTORICAL WEALTH",
+        title="Portfolio value over time",
+        description=(
+            "Evolution of the invested capital across "
+            "the selected historical analysis period."
+        ),
+    )
+
+    portfolio_values = results[
+        "portfolio_values"
+    ]
+
+    if hasattr(
+        portfolio_values,
+        "columns",
+    ):
+        portfolio_values = (
+            portfolio_values.iloc[:, 0]
+        )
+
+    portfolio_value_chart = (
+        build_performance_value_chart(
+            portfolio_values
+        )
+    )
+
+    st.altair_chart(
+        portfolio_value_chart,
+        width="stretch",
+        theme=None,
     )

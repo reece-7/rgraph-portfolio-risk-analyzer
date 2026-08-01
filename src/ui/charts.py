@@ -2126,3 +2126,557 @@ def build_daily_returns_chart(
     )
 
     return apply_rgraph_chart_style(chart)
+
+def build_market_growth_chart(
+    normalized_growth,
+    benchmark_ticker,
+):
+    """
+    Compares the growth of 100 invested in the
+    portfolio and in the selected benchmark.
+    """
+
+    chart_df = normalized_growth.copy()
+
+    chart_df.index = pd.to_datetime(
+        chart_df.index
+    )
+
+    chart_df.index.name = "Date"
+
+    chart_df = (
+        chart_df
+        .reset_index()
+        .melt(
+            id_vars="Date",
+            var_name="Series",
+            value_name="Indexed Value",
+        )
+        .dropna()
+    )
+
+    series_order = [
+        "Portfolio",
+        benchmark_ticker,
+    ]
+
+    color_scale = alt.Scale(
+        domain=series_order,
+        range=[
+            "#35C7FF",
+            "#68DDB2",
+        ],
+    )
+
+    base = alt.Chart(
+        chart_df
+    ).encode(
+        x=alt.X(
+            "Date:T",
+            title=None,
+            axis=alt.Axis(
+                format="%b %Y",
+                labelAngle=0,
+            ),
+        ),
+        color=alt.Color(
+            "Series:N",
+            title=None,
+            sort=series_order,
+            scale=color_scale,
+        ),
+    )
+
+    growth_lines = (
+        base
+        .mark_line(
+            strokeWidth=2.2,
+            interpolate="monotone",
+        )
+        .encode(
+            y=alt.Y(
+                "Indexed Value:Q",
+                title="Growth of 100",
+                axis=alt.Axis(
+                    format=".0f",
+                ),
+                scale=alt.Scale(
+                    zero=False,
+                ),
+            ),
+            tooltip=[
+                alt.Tooltip(
+                    "Date:T",
+                    title="Date",
+                    format="%d %b %Y",
+                ),
+                alt.Tooltip(
+                    "Series:N",
+                    title="Series",
+                ),
+                alt.Tooltip(
+                    "Indexed Value:Q",
+                    title="Indexed value",
+                    format=".2f",
+                ),
+            ],
+        )
+    )
+
+    latest_date = chart_df["Date"].max()
+
+    latest_points_df = chart_df[
+        chart_df["Date"] == latest_date
+    ]
+
+    latest_points = (
+        alt.Chart(latest_points_df)
+        .mark_circle(
+            size=85,
+            stroke="#07111F",
+            strokeWidth=2,
+        )
+        .encode(
+            x=alt.X(
+                "Date:T",
+            ),
+            y=alt.Y(
+                "Indexed Value:Q",
+            ),
+            color=alt.Color(
+                "Series:N",
+                scale=color_scale,
+                legend=None,
+            ),
+            tooltip=[
+                alt.Tooltip(
+                    "Series:N",
+                    title="Series",
+                ),
+                alt.Tooltip(
+                    "Date:T",
+                    title="Latest date",
+                    format="%d %b %Y",
+                ),
+                alt.Tooltip(
+                    "Indexed Value:Q",
+                    title="Latest indexed value",
+                    format=".2f",
+                ),
+            ],
+        )
+    )
+
+    initial_reference = (
+        alt.Chart(
+            pd.DataFrame(
+                {
+                    "Initial Value": [100.0],
+                }
+            )
+        )
+        .mark_rule(
+            color="#6686A8",
+            opacity=0.65,
+            strokeWidth=1,
+            strokeDash=[5, 5],
+        )
+        .encode(
+            y=alt.Y(
+                "Initial Value:Q",
+            ),
+            tooltip=[
+                alt.Tooltip(
+                    "Initial Value:Q",
+                    title="Starting level",
+                    format=".0f",
+                )
+            ],
+        )
+    )
+
+    chart = (
+        alt.layer(
+            initial_reference,
+            growth_lines,
+            latest_points,
+        )
+        .properties(
+            height=390,
+        )
+        .interactive()
+    )
+
+    return apply_rgraph_chart_style(chart)
+
+
+def build_rolling_beta_chart(
+    rolling_beta,
+    benchmark_ticker,
+):
+    """
+    Displays the evolution of rolling portfolio beta.
+    """
+
+    if isinstance(
+        rolling_beta,
+        pd.DataFrame,
+    ):
+        if rolling_beta.shape[1] == 0:
+            beta_series = pd.Series(
+                dtype=float
+            )
+
+        else:
+            beta_series = (
+                rolling_beta
+                .iloc[:, 0]
+                .copy()
+            )
+
+    else:
+        beta_series = pd.Series(
+            rolling_beta
+        ).copy()
+
+    beta_series = (
+        pd.to_numeric(
+            beta_series,
+            errors="coerce",
+        )
+        .dropna()
+    )
+
+    chart_df = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(
+                beta_series.index
+            ),
+            "Rolling Beta": (
+                beta_series.to_numpy()
+            ),
+        }
+    ).dropna()
+
+    base = alt.Chart(
+        chart_df
+    ).encode(
+        x=alt.X(
+            "Date:T",
+            title=None,
+            axis=alt.Axis(
+                format="%b %Y",
+                labelAngle=0,
+            ),
+        )
+    )
+
+    beta_area = (
+        base
+        .mark_area(
+            color="#35C7FF",
+            opacity=0.09,
+            interpolate="monotone",
+        )
+        .encode(
+            y=alt.Y(
+                "Rolling Beta:Q",
+                title=f"Beta vs {benchmark_ticker}",
+                scale=alt.Scale(
+                    zero=False,
+                ),
+            )
+        )
+    )
+
+    beta_line = (
+        base
+        .mark_line(
+            color="#35C7FF",
+            strokeWidth=2.1,
+            interpolate="monotone",
+        )
+        .encode(
+            y=alt.Y(
+                "Rolling Beta:Q",
+                scale=alt.Scale(
+                    zero=False,
+                ),
+            ),
+            tooltip=[
+                alt.Tooltip(
+                    "Date:T",
+                    title="Date",
+                    format="%d %b %Y",
+                ),
+                alt.Tooltip(
+                    "Rolling Beta:Q",
+                    title="Rolling beta",
+                    format=".2f",
+                ),
+            ],
+        )
+    )
+
+    market_beta_reference = (
+        alt.Chart(
+            pd.DataFrame(
+                {
+                    "Market Beta": [1.0],
+                }
+            )
+        )
+        .mark_rule(
+            color="#68DDB2",
+            opacity=0.7,
+            strokeWidth=1.2,
+            strokeDash=[6, 5],
+        )
+        .encode(
+            y=alt.Y(
+                "Market Beta:Q",
+            ),
+            tooltip=[
+                alt.Tooltip(
+                    "Market Beta:Q",
+                    title="Market-equivalent beta",
+                    format=".1f",
+                )
+            ],
+        )
+    )
+
+    chart_layers = [
+        market_beta_reference,
+        beta_area,
+        beta_line,
+    ]
+
+    if not chart_df.empty:
+        latest_point = (
+            alt.Chart(
+                chart_df.tail(1)
+            )
+            .mark_circle(
+                color="#68DDB2",
+                size=90,
+                stroke="#07111F",
+                strokeWidth=2,
+            )
+            .encode(
+                x=alt.X(
+                    "Date:T",
+                ),
+                y=alt.Y(
+                    "Rolling Beta:Q",
+                ),
+                tooltip=[
+                    alt.Tooltip(
+                        "Date:T",
+                        title="Latest date",
+                        format="%d %b %Y",
+                    ),
+                    alt.Tooltip(
+                        "Rolling Beta:Q",
+                        title="Latest rolling beta",
+                        format=".2f",
+                    ),
+                ],
+            )
+        )
+
+        chart_layers.append(
+            latest_point
+        )
+
+    chart = (
+        alt.layer(
+            *chart_layers
+        )
+        .properties(
+            height=360,
+        )
+        .interactive()
+    )
+
+    return apply_rgraph_chart_style(chart)
+
+def build_rebalancing_paths_chart(
+    strategy_paths,
+):
+    """
+    Compares historical portfolio values across
+    rebalancing strategies.
+    """
+
+    chart_df = strategy_paths.copy()
+
+    chart_df.index = pd.to_datetime(
+        chart_df.index
+    )
+
+    chart_df.index.name = "Date"
+
+    chart_df = (
+        chart_df
+        .reset_index()
+        .melt(
+            id_vars="Date",
+            var_name="Strategy",
+            value_name="Portfolio Value",
+        )
+        .dropna()
+    )
+
+    preferred_order = [
+        "Buy & Hold",
+        "Monthly Rebalancing",
+        "Quarterly Rebalancing",
+        "Annual Rebalancing",
+    ]
+
+    available_strategies = (
+        chart_df["Strategy"]
+        .drop_duplicates()
+        .tolist()
+    )
+
+    strategy_order = [
+        strategy
+        for strategy in preferred_order
+        if strategy in available_strategies
+    ]
+
+    strategy_order.extend(
+        strategy
+        for strategy in available_strategies
+        if strategy not in strategy_order
+    )
+
+    strategy_colors = [
+        "#35C7FF",
+        "#68DDB2",
+        "#4E8FD5",
+        "#8FB9D8",
+        "#6F9FBF",
+        "#A7CADF",
+    ]
+
+    color_scale = alt.Scale(
+        domain=strategy_order,
+        range=strategy_colors[
+            :len(strategy_order)
+        ],
+    )
+
+    base = alt.Chart(
+        chart_df
+    ).encode(
+        x=alt.X(
+            "Date:T",
+            title=None,
+            axis=alt.Axis(
+                format="%b %Y",
+                labelAngle=0,
+            ),
+        ),
+        color=alt.Color(
+            "Strategy:N",
+            title=None,
+            sort=strategy_order,
+            scale=color_scale,
+        ),
+    )
+
+    strategy_lines = (
+        base
+        .mark_line(
+            strokeWidth=2.1,
+            interpolate="monotone",
+        )
+        .encode(
+            y=alt.Y(
+                "Portfolio Value:Q",
+                title="Portfolio value",
+                axis=alt.Axis(
+                    format="$,.0f",
+                ),
+                scale=alt.Scale(
+                    zero=False,
+                ),
+            ),
+            tooltip=[
+                alt.Tooltip(
+                    "Date:T",
+                    title="Date",
+                    format="%d %b %Y",
+                ),
+                alt.Tooltip(
+                    "Strategy:N",
+                    title="Strategy",
+                ),
+                alt.Tooltip(
+                    "Portfolio Value:Q",
+                    title="Portfolio value",
+                    format="$,.2f",
+                ),
+            ],
+        )
+    )
+
+    latest_date = chart_df["Date"].max()
+
+    latest_values = chart_df[
+        chart_df["Date"] == latest_date
+    ]
+
+    latest_points = (
+        alt.Chart(latest_values)
+        .mark_circle(
+            size=85,
+            stroke="#07111F",
+            strokeWidth=2,
+        )
+        .encode(
+            x=alt.X(
+                "Date:T",
+            ),
+            y=alt.Y(
+                "Portfolio Value:Q",
+            ),
+            color=alt.Color(
+                "Strategy:N",
+                scale=color_scale,
+                legend=None,
+            ),
+            tooltip=[
+                alt.Tooltip(
+                    "Strategy:N",
+                    title="Strategy",
+                ),
+                alt.Tooltip(
+                    "Date:T",
+                    title="Latest date",
+                    format="%d %b %Y",
+                ),
+                alt.Tooltip(
+                    "Portfolio Value:Q",
+                    title="Final value",
+                    format="$,.2f",
+                ),
+            ],
+        )
+    )
+
+    chart = (
+        alt.layer(
+            strategy_lines,
+            latest_points,
+        )
+        .properties(
+            height=390,
+        )
+        .interactive()
+    )
+
+    return apply_rgraph_chart_style(chart)
