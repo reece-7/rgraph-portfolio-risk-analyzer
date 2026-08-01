@@ -5,4 +5,4 @@ yfinance
 scipy
 jupyter
 ipykernel
-streamlit
+streamlit>=1.52,<2

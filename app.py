@@ -11,6 +11,7 @@ from src.ui.rebalancing import render_rebalancing
 from src.ui.market import render_market
 from src.ui.downloads import render_downloads
 from src.ui.performance import render_performance
+from src.ui.styles import apply_global_styles
 
 st.set_page_config(
     page_title="rGraph | Portfolio Risk Analyzer",
@@ -19,6 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+apply_global_styles()
 
 if "analysis_results" not in st.session_state:
     st.session_state.analysis_results = None
@@ -110,16 +112,6 @@ non_positive_weight_tickers = [
     for ticker, weight in portfolio_inputs
     if weight <= 0
 ]
-
-non_positive_weight_tickers = [
-    ticker for ticker, weight in portfolio_inputs
-    if weight <= 0
-]
-
-weight_sum = sum(weights.values())
-valid_tickers = list(weights.keys())
-duplicate_tickers = len(valid_tickers) != len(set(valid_tickers))
-
 
 # =========================
 # PORTFOLIO SETUP
