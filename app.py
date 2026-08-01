@@ -12,6 +12,7 @@ from src.ui.market import render_market
 from src.ui.downloads import render_downloads
 from src.ui.performance import render_performance
 from src.ui.styles import apply_global_styles
+from src.ui.setup import render_portfolio_setup
 
 st.set_page_config(
     page_title="rGraph | Portfolio Risk Analyzer",
@@ -117,45 +118,13 @@ non_positive_weight_tickers = [
 # PORTFOLIO SETUP
 # =========================
 
-st.subheader("Portfolio Setup")
-
-setup_df = pd.DataFrame(
-    portfolio_inputs,
-    columns=["Ticker", "Weight"],
+run_button = render_portfolio_setup(
+    portfolio_inputs=portfolio_inputs,
+    weight_sum=weight_sum,
+    duplicate_tickers=duplicate_tickers,
+    non_positive_weight_tickers=non_positive_weight_tickers,
+    benchmark_ticker=benchmark_ticker,
 )
-
-if not setup_df.empty:
-    setup_df["Weight (%)"] = setup_df["Weight"] * 100
-    st.dataframe(setup_df[["Ticker", "Weight (%)"]], use_container_width=True)
-
-st.write(f"Total weight: **{weight_sum * 100:.2f}%**")
-
-if abs(weight_sum - 1.0) > 0.0001:
-    st.warning("Portfolio weights must sum to 100% before running the analysis.")
-
-if len(valid_tickers) < 2:
-    st.warning("Please enter at least two valid tickers.")
-
-if duplicate_tickers:
-    st.warning("Duplicate tickers detected. Please use each ticker only once.")
-
-if non_positive_weight_tickers:
-    st.warning(
-        "Some tickers have a weight of 0%. Please remove them or assign a positive weight."
-    )
-
-if benchmark_ticker == "":
-    st.warning("Please enter a valid benchmark ticker.")
-
-# =========================
-# RUN ANALYSIS
-# =========================
-
-run_button = st.button(
-    "Run Portfolio Analysis",
-    type="primary",
-)
-
 
 # =========================
 # CALCULATE NEW ANALYSIS
@@ -260,9 +229,17 @@ analysis_inputs = st.session_state.analysis_inputs
 
 
 if results is None or analysis_inputs is None:
-    st.info(
-        "Configure your portfolio in the sidebar and click "
-        "'Run Portfolio Analysis' to generate the dashboard."
+    st.html(
+        """
+        <div class="rg-dashboard-empty">
+            <span class="rg-dashboard-empty-line"></span>
+
+            <span>
+                No analysis has been generated yet.
+                Use the current allocation to unlock the dashboard.
+            </span>
+        </div>
+        """
     )
 
     st.stop()
