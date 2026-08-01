@@ -186,8 +186,18 @@ if run_button:
                     "risk_free_rate": float(risk_free_rate),
                 }
 
-                st.success(
-                    "Analysis completed successfully."
+                st.html(
+                    """
+                    <div class="rg-analysis-complete">
+                        <span class="rg-analysis-complete-dot"></span>
+
+                        <strong>Analysis complete</strong>
+
+                        <span>
+                            Dashboard updated using the latest allocation.
+                        </span>
+                    </div>
+                    """
                 )
 
             except ValueError as error:
@@ -287,75 +297,87 @@ st.caption(
     "Dashboard results refer to the latest completed analysis."
 )
 
-
 # =========================
-# DASHBOARD TABS
+# DASHBOARD NAVIGATION
 # =========================
 
-(
-    tab_overview,
-    tab_performance,
-    tab_monte_carlo,
-    tab_optimization,
-    tab_rebalancing,
-    tab_market,
-    tab_downloads,
-) = st.tabs(
-    [
+st.html(
+    """
+    <div class="rg-dashboard-navigation-header">
+        <div>
+            <span>ANALYSIS WORKSPACE</span>
+            <h2>Portfolio dashboard</h2>
+        </div>
+
+        <p>
+            Explore the latest completed portfolio analysis.
+        </p>
+    </div>
+    """
+)
+
+dashboard_section = st.segmented_control(
+    "Dashboard section",
+    options=[
         "Overview",
         "Performance",
-        "Monte Carlo",
-        "Optimization",
+        "Simulation",
+        "Allocation",
         "Rebalancing",
-        "Market Sensitivity",
+        "Market",
         "Downloads",
-    ]
+    ],
+    default="Overview",
+    key="dashboard_navigation",
+    label_visibility="collapsed",
+    width="stretch",
 )
 
 
-with tab_overview:
+# =========================
+# CONDITIONAL RENDERING
+# =========================
+
+if dashboard_section == "Overview":
     render_overview(
         results=results,
         initial_value=analyzed_initial_value,
         setup_df=analyzed_setup_df,
     )
 
-
-with tab_performance:
+elif dashboard_section == "Performance":
     render_performance(
         results=results,
     )
 
-
-with tab_monte_carlo:
+elif dashboard_section == "Simulation":
     render_monte_carlo(
         results=results,
         fan_chart_lines=fan_chart_lines,
         n_simulations=analyzed_n_simulations,
+        initial_value=analyzed_initial_value,
     )
 
-
-with tab_optimization:
+elif dashboard_section == "Allocation":
     render_optimization(
         results=results,
         risk_parity_df=risk_parity_df,
+        current_weights=analyzed_weights,
     )
 
-
-with tab_rebalancing:
+elif dashboard_section == "Rebalancing":
     render_rebalancing(
         results=results,
     )
 
-
-with tab_market:
+elif dashboard_section == "Market":
     render_market(
         results=results,
         benchmark_ticker=analyzed_benchmark_ticker,
     )
 
-
-with tab_downloads:
+elif dashboard_section == "Downloads":
     render_downloads(
         results=results,
     )
+

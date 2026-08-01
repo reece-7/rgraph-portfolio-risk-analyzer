@@ -6,3 +6,4 @@ scipy
 jupyter
 ipykernel
 streamlit>=1.52,<2
+altair>=5,<7
