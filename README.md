@@ -190,25 +190,34 @@ Rebalancing and transaction-cost analysis
 Benchmark sensitivity
         ↓
 Interactive dashboard and CSV exports
-Technology Stack
+```
+
+---
+
+## Technology Stack
 
 The application is built with:
 
-Python
-Streamlit
-pandas
-NumPy
-SciPy
-Altair
-yfinance
+- Python
+- Streamlit
+- pandas
+- NumPy
+- SciPy
+- Altair
+- yfinance
 
 Additional development and research tools include:
 
-Jupyter
-Matplotlib
-Git
-GitHub
-Project Structure
+- Jupyter
+- Matplotlib
+- Git
+- GitHub
+
+---
+
+## Project Structure
+
+```text
 rgraph-portfolio-risk-analyzer/
 ├── .streamlit/
 │   └── config.toml
@@ -240,72 +249,106 @@ rgraph-portfolio-risk-analyzer/
         ├── sidebar.py
         ├── styles.py
         └── tables.py
-Main Components
-Component	Responsibility
-app.py	Streamlit application orchestration and session state
-portfolio_analyzer.py	Complete analytical pipeline
-data_loader.py	Market-data download and validation
-risk_metrics.py	Historical performance and risk calculations
-monte_carlo.py	Parametric and bootstrap simulation engines
-portfolio_optimization.py	Efficient Frontier and Risk Parity
-rebalancing.py	Rebalancing and transaction-cost simulation
-market_sensitivity.py	Benchmark and capture analysis
-src/ui/	Dashboard sections, charts, tables and styling
-Installation
+```
+
+### Main Components
+
+| Component | Responsibility |
+|---|---|
+| `app.py` | Streamlit application orchestration and session state |
+| `portfolio_analyzer.py` | Complete analytical pipeline |
+| `data_loader.py` | Market-data download and validation |
+| `risk_metrics.py` | Historical performance and risk calculations |
+| `monte_carlo.py` | Parametric and bootstrap simulation engines |
+| `portfolio_optimization.py` | Efficient Frontier and Risk Parity |
+| `rebalancing.py` | Rebalancing and transaction-cost simulation |
+| `market_sensitivity.py` | Benchmark and capture analysis |
+| `src/ui/` | Dashboard sections, charts, tables and styling |
+
+---
+
+## Installation
 
 Clone the repository:
 
+```bash
 git clone https://github.com/reece-7/rgraph-portfolio-risk-analyzer.git
 cd rgraph-portfolio-risk-analyzer
+```
 
 Create a virtual environment:
 
+```bash
 python -m venv .venv
+```
 
 Activate it on Windows:
 
+```bash
 .venv\Scripts\activate
+```
 
 Activate it on macOS or Linux:
 
+```bash
 source .venv/bin/activate
+```
 
 Install the dependencies:
 
+```bash
 pip install -r requirements.txt
-Run the Application
+```
+
+---
+
+## Run the Application
 
 Start the Streamlit dashboard:
 
+```bash
 python -m streamlit run app.py
+```
 
 The application will normally be available at:
 
+```text
 http://localhost:8501
-Command-Line Analysis
+```
+
+---
+
+## Command-Line Analysis
 
 The project also includes a non-interactive analysis script:
 
+```bash
 python run_analysis.py
+```
 
 This can be used to execute the analytical pipeline without the Streamlit interface.
 
-Design and Engineering Features
+---
+
+## Design and Engineering Features
 
 The current version includes:
 
-Modular analytical architecture
-Independent UI modules
-Session-state persistence
-Cached portfolio analysis
-Input-change detection
-Multi-stage analysis status
-Unified financial tables
-Interactive Altair visualizations
-Responsive dark financial interface
-Clear validation and error handling
-Downloadable analytical datasets
-Methodology Notes
+- Modular analytical architecture
+- Independent UI modules
+- Session-state persistence
+- Cached portfolio analysis
+- Input-change detection
+- Multi-stage analysis status
+- Unified financial tables
+- Interactive Altair visualizations
+- Responsive dark financial interface
+- Clear validation and error handling
+- Downloadable analytical datasets
+
+---
+
+## Methodology Notes
 
 Historical performance metrics are estimated from downloaded market prices.
 
@@ -319,23 +362,27 @@ Risk Parity follows a different objective from maximum-Sharpe and minimum-volati
 
 Transaction-cost analysis applies modeled costs to trades created by each rebalancing strategy.
 
-Limitations
+---
+
+## Limitations
 
 The application relies on historical data and simplified quantitative assumptions.
 
 Important limitations include:
 
-Historical relationships may not persist
-Monte Carlo results are scenario estimates, not forecasts
-Return distributions may change through time
-Liquidity, taxes and market impact are not fully modeled
-Portfolio optimization is sensitive to estimated inputs
-Long-horizon uncertainty increases materially
+- Historical relationships may not persist
+- Monte Carlo results are scenario estimates, not forecasts
+- Return distributions may change through time
+- Liquidity, taxes and market impact are not fully modeled
+- Portfolio optimization is sensitive to estimated inputs
+- Long-horizon uncertainty increases materially
 
 The application is intended for educational and analytical use and does not constitute financial advice.
 
-Author
+---
 
-Ouyang Sun
+## Author
 
-GitHub: reece-7
+**Ouyang Sun**
+
+GitHub: `reece-7`
