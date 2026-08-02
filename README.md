@@ -10,8 +10,6 @@ The project combines quantitative finance models with an interactive financial d
 
 https://rgraph-portfolio.streamlit.app
 
-> The public deployment will reflect the latest version after the `rgraph-v2` branch is merged into `main`.
-
 ---
 
 ## Core Capabilities
