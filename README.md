@@ -1,213 +1,152 @@
-# Interactive Portfolio Risk Analyzer
+# rGraph — Portfolio Risk Analyzer
 
-Interactive Portfolio Risk Analyzer is a Python-based portfolio analysis application that allows users to evaluate custom portfolios using historical market data, Monte Carlo simulations, risk metrics, portfolio optimization, rebalancing analysis, transaction costs, and benchmark sensitivity.
+rGraph is an interactive portfolio analytics application built with Python and Streamlit.
 
-The project started as a quantitative finance notebook project and was later refactored into a reusable Python package with an interactive Streamlit interface.
+It allows users to construct a custom portfolio, evaluate its historical performance, simulate future outcomes, compare allocation methods, analyze rebalancing strategies, measure transaction-cost drag, and study the portfolio's relationship with a market benchmark.
 
----
+The project combines quantitative finance models with an interactive financial dashboard designed for practical portfolio analysis.
 
-## Live Demo
-
-Try the app online:
+## Live Application
 
 https://rgraph-portfolio.streamlit.app
 
+> The public deployment will reflect the latest version after the `rgraph-v2` branch is merged into `main`.
+
 ---
 
-## Features
+## Core Capabilities
 
-The application allows users to input a custom portfolio and analyze it through several financial and risk-management tools.
+### Historical Performance
 
-### Portfolio Inputs
-
-Users can customize:
-
-- Initial capital
-- Portfolio tickers
-- Portfolio weights
-- Historical start date
-- Benchmark ticker
-- Number of Monte Carlo simulations
-- Monte Carlo time horizon
-- Risk-free rate
-- Trading days assumption
-- Transaction cost assumptions
-
-### Risk and Performance Analysis
-
-The application calculates:
+rGraph calculates and visualizes:
 
 - Total return
 - Annualized return
 - Annualized volatility
 - Sharpe Ratio
 - Maximum drawdown
-- Historical Value at Risk (VaR)
-- Historical Expected Shortfall
+- Historical Value at Risk at 95%
+- Historical Expected Shortfall at 95%
+- Daily portfolio returns
+- Historical portfolio value
 
 ### Monte Carlo Simulation
 
-The project includes two Monte Carlo approaches:
+The application includes two simulation engines:
 
-- Parametric Monte Carlo simulation
-- Historical Bootstrap Monte Carlo simulation
+- Parametric Monte Carlo
+- Historical bootstrap Monte Carlo
 
-The simulations estimate:
+Users can configure either:
 
-- Mean final portfolio value
-- Median final portfolio value
+- A future target date
+- A fixed number of simulated trading periods
+
+Simulation outputs include:
+
+- Median terminal value
+- Mean terminal value
 - Probability of loss
-- Monte Carlo Value at Risk
-- Monte Carlo Expected Shortfall
+- Value at Risk
+- Expected Shortfall
+- Percentile fan charts
+- Terminal-value distributions
+- Parametric and bootstrap model comparison
 
 ### Portfolio Optimization
 
-The project includes:
+rGraph evaluates alternative portfolio constructions using:
 
-- Efficient Frontier simulation
-- Maximum Sharpe Ratio portfolio
-- Minimum Volatility portfolio
-- Risk Parity portfolio
-- Asset risk contribution analysis
+- Random portfolio simulation
+- Efficient Frontier analysis
+- Maximum Sharpe portfolio
+- Minimum-volatility portfolio
+- Risk Parity allocation
+- Current allocation versus Risk Parity
+- Asset-level portfolio weights
 
-### Rebalancing and Transaction Costs
+### Rebalancing Analysis
 
 The application compares:
 
-- Buy & Hold
+- Buy and Hold
 - Monthly rebalancing
 - Quarterly rebalancing
 - Annual rebalancing
 
-It also estimates the impact of transaction costs and calculates cost drag under different cost assumptions.
+It also models several transaction-cost assumptions and calculates:
 
-### Benchmark and Market Sensitivity
+- Final portfolio value
+- Return and volatility
+- Sharpe Ratio
+- Maximum drawdown
+- Total transaction costs
+- Portfolio value lost to trading costs
+- Cost drag by strategy
 
-The project analyzes the portfolio relative to a selected benchmark using:
+### Market Sensitivity
 
-- Beta vs benchmark
-- Correlation vs benchmark
+The portfolio is evaluated relative to a selected benchmark through:
+
+- Beta
+- Correlation
+- Annualized active return
 - Tracking Error
 - Information Ratio
 - Upside Capture
 - Downside Capture
+- Capture Ratio
+- Rolling Beta
+- Indexed portfolio-versus-benchmark performance
+
+### Data Export
+
+The dashboard provides downloadable CSV datasets for the main analytical outputs, including:
+
+- Historical prices
+- Asset returns
+- Portfolio returns
+- Portfolio values
+- Performance summary
+- Monte Carlo metrics
+- Efficient Frontier
+- Optimal portfolios
+- Risk Parity weights
+- Rebalancing results
+- Transaction-cost analysis
+- Market sensitivity
 - Rolling Beta
 
 ---
 
-## Tech Stack
+## User Inputs
 
-The project is built with:
+Users can configure:
 
-- Python
-- pandas
-- NumPy
-- SciPy
-- matplotlib
-- yfinance
-- Streamlit
-- Jupyter Notebook
+| Category | Inputs |
+|---|---|
+| Portfolio | Tickers, weights and initial capital |
+| Historical data | Start date and optional end date |
+| Benchmark | Custom benchmark ticker |
+| Simulation | Number of simulations and forecast horizon |
+| Forecast mode | Target date or trading periods |
+| Assumptions | Risk-free rate and trading days per year |
 
----
+The application validates:
 
-## Project Structure
-
-```text
-Project_Montecarlo/
-├── app.py
-├── run_analysis.py
-├── requirements.txt
-├── README.md
-├── data/
-├── images/
-├── notebooks/
-├── outputs/
-└── src/
-    ├── __init__.py
-    ├── data_loader.py
-    ├── risk_metrics.py
-    ├── monte_carlo.py
-    ├── portfolio_optimization.py
-    ├── rebalancing.py
-    ├── market_sensitivity.py
-    └── portfolio_analyzer.py
-```
-
-### Main Components
-
-- `app.py`: interactive Streamlit application
-- `run_analysis.py`: command-line version of the analysis
-- `src/`: reusable Python modules
-- `notebooks/`: research and development notebooks
-- `outputs/`: generated CSV results
-- `images/`: saved visualizations
+- Portfolio weights summing to 100%
+- Positive asset weights
+- Duplicate tickers
+- Missing benchmark symbols
+- Invalid or unavailable market data
+- Insufficient historical observations
+- Invalid simulation horizons
 
 ---
 
-## Installation
+## Default Portfolio
 
-Clone the repository:
-
-```bash
-git clone https://github.com/reece-7/rgraph-portfolio-risk-analyzer.git
-cd rgraph-portfolio-risk-analyzer
-```
-
-Create a virtual environment:
-
-```bash
-python -m venv .venv
-```
-
-Activate the virtual environment on Windows:
-
-```bash
-.venv\Scripts\activate
-```
-
-Install the required packages:
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-## How to Run the Interactive App
-
-Launch the Streamlit application:
-
-```bash
-streamlit run app.py
-```
-
-The application will open locally in the browser, usually at:
-
-```text
-http://localhost:8501
-```
-
----
-
-## How to Run the Command-Line Analysis
-
-The project also includes a non-interactive script:
-
-```bash
-python run_analysis.py
-```
-
-This automatically runs a default portfolio analysis and saves the results in:
-
-```text
-outputs/final_analysis/
-```
-
----
-
-## Example Portfolio
-
-The default portfolio used in the project is:
+The default configuration is:
 
 | Asset | Weight |
 |---|---:|
@@ -216,88 +155,187 @@ The default portfolio used in the project is:
 | TLT | 20% |
 | GLD | 10% |
 
-This represents a diversified portfolio with exposure to:
+This provides exposure to:
 
-- U.S. equities
-- Technology/growth equities
-- Long-term Treasury bonds
+- Broad US equities
+- Technology and growth equities
+- Long-duration US Treasury bonds
 - Gold
 
-Users can replace these tickers and weights directly in the Streamlit interface.
+All tickers and weights can be replaced directly from the sidebar.
 
 ---
 
-## Example Outputs
-
-The project generates several outputs, including:
-
-- Portfolio performance summary
-- Monte Carlo simulation results
-- Efficient Frontier portfolios
-- Optimal portfolio allocations
-- Risk Parity weights
-- Rebalancing strategy comparison
-- Transaction cost analysis
-- Market sensitivity metrics
-- Rolling beta estimates
-
-CSV outputs are saved in the `outputs/` folder.
-
----
-
-## Methodology Overview
-
-The project follows a quantitative portfolio analysis workflow:
+## Application Workflow
 
 ```text
-User inputs
-↓
-Historical price download
-↓
-Daily return calculation
-↓
-Portfolio performance analysis
-↓
-Risk metrics
-↓
-Monte Carlo simulation
-↓
+Portfolio configuration
+        ↓
+Market-data download and validation
+        ↓
+Historical return calculation
+        ↓
+Performance and risk analysis
+        ↓
+Parametric Monte Carlo simulation
+        ↓
+Bootstrap Monte Carlo simulation
+        ↓
 Portfolio optimization
-↓
-Rebalancing analysis
-↓
+        ↓
+Risk Parity allocation
+        ↓
+Rebalancing and transaction-cost analysis
+        ↓
 Benchmark sensitivity
-↓
-Interactive results and downloadable outputs
-```
+        ↓
+Interactive dashboard and CSV exports
+Technology Stack
 
-The analysis is based on historical market data downloaded using `yfinance`.
+The application is built with:
 
----
+Python
+Streamlit
+pandas
+NumPy
+SciPy
+Altair
+yfinance
 
-## Important Notes
+Additional development and research tools include:
 
-This project is designed for educational and analytical purposes.
+Jupyter
+Matplotlib
+Git
+GitHub
+Project Structure
+rgraph-portfolio-risk-analyzer/
+├── .streamlit/
+│   └── config.toml
+├── app.py
+├── run_analysis.py
+├── requirements.txt
+├── README.md
+└── src/
+    ├── __init__.py
+    ├── data_loader.py
+    ├── market_sensitivity.py
+    ├── monte_carlo.py
+    ├── portfolio_analyzer.py
+    ├── portfolio_optimization.py
+    ├── rebalancing.py
+    ├── risk_metrics.py
+    └── ui/
+        ├── __init__.py
+        ├── charts.py
+        ├── downloads.py
+        ├── home.py
+        ├── market.py
+        ├── monte_carlo.py
+        ├── optimization.py
+        ├── overview.py
+        ├── performance.py
+        ├── rebalancing.py
+        ├── setup.py
+        ├── sidebar.py
+        ├── styles.py
+        └── tables.py
+Main Components
+Component	Responsibility
+app.py	Streamlit application orchestration and session state
+portfolio_analyzer.py	Complete analytical pipeline
+data_loader.py	Market-data download and validation
+risk_metrics.py	Historical performance and risk calculations
+monte_carlo.py	Parametric and bootstrap simulation engines
+portfolio_optimization.py	Efficient Frontier and Risk Parity
+rebalancing.py	Rebalancing and transaction-cost simulation
+market_sensitivity.py	Benchmark and capture analysis
+src/ui/	Dashboard sections, charts, tables and styling
+Installation
 
-The results should not be interpreted as financial advice. Monte Carlo simulations and historical risk metrics are based on past data and assumptions, and they do not guarantee future performance.
+Clone the repository:
 
----
+git clone https://github.com/reece-7/rgraph-portfolio-risk-analyzer.git
+cd rgraph-portfolio-risk-analyzer
 
-## Future Improvements
+Create a virtual environment:
 
-Possible future improvements include:
+python -m venv .venv
 
-- More advanced visualizations
-- Better ticker validation
-- Asset type classification
-- User-defined transaction costs
-- Portfolio comparison mode
-- Cloud deployment
-- PDF report generation
-- Improved UI design
+Activate it on Windows:
 
----
+.venv\Scripts\activate
 
-## Author
+Activate it on macOS or Linux:
+
+source .venv/bin/activate
+
+Install the dependencies:
+
+pip install -r requirements.txt
+Run the Application
+
+Start the Streamlit dashboard:
+
+python -m streamlit run app.py
+
+The application will normally be available at:
+
+http://localhost:8501
+Command-Line Analysis
+
+The project also includes a non-interactive analysis script:
+
+python run_analysis.py
+
+This can be used to execute the analytical pipeline without the Streamlit interface.
+
+Design and Engineering Features
+
+The current version includes:
+
+Modular analytical architecture
+Independent UI modules
+Session-state persistence
+Cached portfolio analysis
+Input-change detection
+Multi-stage analysis status
+Unified financial tables
+Interactive Altair visualizations
+Responsive dark financial interface
+Clear validation and error handling
+Downloadable analytical datasets
+Methodology Notes
+
+Historical performance metrics are estimated from downloaded market prices.
+
+The parametric Monte Carlo model generates simulated returns using estimated historical statistical properties.
+
+The bootstrap model resamples historical observations and therefore preserves more of the empirical return distribution.
+
+Portfolio optimization is based on historical estimates of return, volatility and correlation.
+
+Risk Parity follows a different objective from maximum-Sharpe and minimum-volatility optimization: it attempts to distribute portfolio risk more evenly across the selected assets.
+
+Transaction-cost analysis applies modeled costs to trades created by each rebalancing strategy.
+
+Limitations
+
+The application relies on historical data and simplified quantitative assumptions.
+
+Important limitations include:
+
+Historical relationships may not persist
+Monte Carlo results are scenario estimates, not forecasts
+Return distributions may change through time
+Liquidity, taxes and market impact are not fully modeled
+Portfolio optimization is sensitive to estimated inputs
+Long-horizon uncertainty increases materially
+
+The application is intended for educational and analytical use and does not constitute financial advice.
+
+Author
 
 Ouyang Sun
+
+GitHub: reece-7
