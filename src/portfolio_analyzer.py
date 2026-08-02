@@ -49,7 +49,8 @@ def analyze_portfolio(
     risk_free_rate=0.00,
     benchmark_ticker="SPY",
     transaction_cost_rates=None,
-    random_seed=42
+    random_seed=42,
+    progress_callback=None,
 ):
     """
     Runs the full portfolio analysis pipeline.
@@ -57,8 +58,21 @@ def analyze_portfolio(
     This is the main engine of the final project.
     """
 
+    def report_progress(label):
+        """
+        Sends a progress update when a callback
+        has been provided by the interface.
+        """
+
+        if progress_callback is not None:
+            progress_callback(label)
+
     # Make sure the benchmark is included in downloaded data
     all_tickers = list(dict.fromkeys(list(tickers) + [benchmark_ticker]))
+
+    report_progress(
+        "Downloading and validating market data"
+    )
 
     # Download price data
     prices = download_price_data(
@@ -120,6 +134,10 @@ def analyze_portfolio(
                 "at least 21 simulated periods."
             )
 
+    report_progress(
+        "Building historical portfolio analytics"
+    )
+
     # Calculate daily returns
     returns = calculate_daily_returns(prices)
 
@@ -150,6 +168,10 @@ def analyze_portfolio(
         risk_free_rate=risk_free_rate
     )
 
+    report_progress(
+        "Running parametric Monte Carlo scenarios"
+    )
+
     # Parametric Monte Carlo
     parametric_paths, parametric_final_values = run_parametric_monte_carlo(
         returns=portfolio_returns_data,
@@ -163,6 +185,10 @@ def analyze_portfolio(
     parametric_metrics = calculate_simulation_risk_metrics(
         final_values=parametric_final_values,
         initial_value=initial_value
+    )
+
+    report_progress(
+        "Running bootstrap Monte Carlo scenarios"
     )
 
     # Bootstrap Monte Carlo
@@ -185,6 +211,10 @@ def analyze_portfolio(
         "Bootstrap Monte Carlo": bootstrap_metrics
     }).T
 
+    report_progress(
+        "Optimizing portfolio allocation"
+    )
+
     # Efficient Frontier
     efficient_frontier = generate_random_portfolios(
         returns=portfolio_returns_data,
@@ -202,6 +232,10 @@ def analyze_portfolio(
     risk_parity_weights = calculate_risk_parity_weights(
         returns=portfolio_returns_data,
         trading_days=trading_days
+    )
+
+    report_progress(
+        "Evaluating rebalancing strategies and costs"
     )
 
     # Rebalancing analysis
@@ -227,6 +261,10 @@ def analyze_portfolio(
         transaction_cost_rates=transaction_cost_rates
     )
 
+    report_progress(
+        "Measuring benchmark sensitivity"
+    )
+
     # Market sensitivity analysis
     benchmark_returns = returns[benchmark_ticker]
 
@@ -244,6 +282,10 @@ def analyze_portfolio(
     rolling_beta = calculate_rolling_beta(
         portfolio_returns=portfolio_returns,
         benchmark_returns=benchmark_returns
+    )
+
+    report_progress(
+        "Finalizing dashboard results"
     )
 
     results = {

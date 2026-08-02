@@ -21,12 +21,40 @@ def download_price_data(
     if len(tickers) == 0:
         raise ValueError("No valid tickers were provided.")
 
+    start_timestamp = pd.Timestamp(
+        start_date
+    ).normalize()
+
+    download_end_date = None
+
+    if end_date is not None:
+        selected_end_timestamp = pd.Timestamp(
+            end_date
+        ).normalize()
+
+        if selected_end_timestamp <= start_timestamp:
+            raise ValueError(
+                "Historical end date must be later than "
+                "the historical start date."
+            )
+
+        # yfinance treats `end` as exclusive.
+        # Add one calendar day so the selected date
+        # is included whenever it is a trading day.
+        download_end_date = (
+            selected_end_timestamp
+            + pd.Timedelta(days=1)
+        ).strftime("%Y-%m-%d")
+
+
     raw_data = yf.download(
         tickers=tickers,
-        start=start_date,
-        end=end_date,
+        start=start_timestamp.strftime(
+            "%Y-%m-%d"
+        ),
+        end=download_end_date,
         auto_adjust=auto_adjust,
-        progress=False
+        progress=False,
     )
 
     if raw_data.empty:

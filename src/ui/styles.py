@@ -284,8 +284,13 @@ def apply_global_styles():
         ========================= */
 
         div[data-testid="stAlert"] {
-            border-radius: 12px;
-            border: 1px solid var(--rg-border);
+            margin: 0.75rem 0;
+            border: none;
+            border-top: 1px solid rgba(40, 67, 94, 0.72);
+            border-bottom: 1px solid rgba(40, 67, 94, 0.72);
+            border-radius: 0;
+            background: rgba(15, 29, 46, 0.34);
+            box-shadow: none;
         }
 
         details {
@@ -644,7 +649,7 @@ def apply_global_styles():
                 opacity: 1;
             }
         }
-        
+
         /* =========================
             PORTFOLIO SETUP
         ========================= */
@@ -968,7 +973,7 @@ def apply_global_styles():
                     transparent
                 );
         }
-        
+
         /* =========================
             ANALYSIS COMPLETION
         ========================= */
@@ -1581,7 +1586,7 @@ def apply_global_styles():
             line-height: 1.5;
             text-align: right;
         }
-        
+
         /* =========================
             MONTE CARLO SIMULATION
         ========================= */
@@ -1765,7 +1770,7 @@ def apply_global_styles():
             font-size: 0.8rem;
             line-height: 1.65;
         }
-        
+
         /* =========================
             REBALANCING
         ========================= */
@@ -1958,7 +1963,7 @@ def apply_global_styles():
             font-size: 0.8rem;
             line-height: 1.65;
         }
-        
+
         /* =========================
             DOWNLOADS
         ========================= */
@@ -2316,6 +2321,37 @@ def apply_global_styles():
 
         .rg-analysis-state.is-stale strong {
             color: #F4C95D;
+        }
+
+        /* =========================
+            ANALYSIS ERROR DETAIL
+        ========================= */
+
+        .rg-analysis-error-line {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            margin: 0.35rem 0 1.15rem;
+            padding: 0.15rem 0 0.7rem;
+            border-bottom:
+                1px solid rgba(251, 113, 133, 0.22);
+        }
+
+        .rg-analysis-error-line > span {
+            flex: 0 0 auto;
+            width: 22px;
+            height: 1px;
+            background: #FB7185;
+            box-shadow:
+                0 0 8px rgba(251, 113, 133, 0.35);
+        }
+
+        .rg-analysis-error-line p {
+            margin: 0;
+            color: #A8BAC8;
+            font-size: 0.75rem;
+            font-weight: 500;
+            line-height: 1.55;
         }
 
         /* =========================

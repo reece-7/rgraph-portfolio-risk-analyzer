@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 
+from html import escape
 from src.portfolio_analyzer import analyze_portfolio
 from src.ui.home import render_home
 from src.ui.sidebar import render_sidebar
@@ -85,6 +86,7 @@ def get_cached_analysis(
     trading_days,
     risk_free_rate,
     benchmark_ticker,
+    _progress_callback=None,
 ):
     weights = dict(weights_items)
 
@@ -106,6 +108,7 @@ def get_cached_analysis(
             "0.10%": 0.0010,
             "0.25%": 0.0025,
         },
+        progress_callback=_progress_callback,
     )
 
 
@@ -242,86 +245,141 @@ if run_button:
         )
 
     else:
-        with st.spinner("Running portfolio analysis..."):
-            try:
-                results = get_cached_analysis(
-                    tickers=tuple(valid_tickers),
-                    weights_items=tuple(
-                        sorted(weights.items())
-                    ),
-                    start_date=str(start_date),
-                    end_date=(
-                        str(end_date)
-                        if end_date is not None
-                        else None
-                    ),
-                    initial_value=float(initial_value),
-                    n_simulations=int(n_simulations),
-                    time_horizon=int(time_horizon),
-                    simulation_end_date=(
-                        str(simulation_end_date)
-                        if simulation_end_date is not None
-                        else None
-                    ),
-                    trading_days=int(trading_days),
-                    risk_free_rate=float(risk_free_rate),
-                    benchmark_ticker=benchmark_ticker,
-                )
+        analysis_status = st.status(
+            "Preparing portfolio analysis",
+            state="running",
+            expanded=False,
+        )
 
-                st.session_state.analysis_results = results
+        def update_analysis_status(label):
+            analysis_status.update(
+                label=label,
+                state="running",
+                expanded=False,
+            )
+        def show_analysis_error(
+            label,
+            message,
+        ):
+            """
+            Shows a closed error status followed by
+            one flat explanatory line.
+            """
 
-                st.session_state.analysis_inputs = {
-                    **current_analysis_inputs,
-                    "tickers": list(
-                        current_analysis_inputs["tickers"]
-                    ),
-                    "weights": dict(
-                        current_analysis_inputs["weights"]
-                    ),
-                }
+            analysis_status.update(
+                label=label,
+                state="error",
+                expanded=False,
+            )
 
-                st.html(
-                    """
-                    <div class="rg-analysis-complete">
-                        <span class="rg-analysis-complete-dot"></span>
+            st.html(
+                f"""
+                <div class="rg-analysis-error-line">
+                    <span></span>
 
-                        <strong>Analysis complete</strong>
+                    <p>
+                        {escape(str(message))}
+                    </p>
+                </div>
+                """
+            )
 
-                        <span>
-                            Dashboard updated using the latest allocation.
-                        </span>
-                    </div>
-                    """
-                )
+        try:
+            results = get_cached_analysis(
+                tickers=tuple(valid_tickers),
+                weights_items=tuple(
+                    sorted(weights.items())
+                ),
+                start_date=str(start_date),
+                end_date=(
+                    str(end_date)
+                    if end_date is not None
+                    else None
+                ),
+                initial_value=float(initial_value),
+                n_simulations=int(n_simulations),
+                time_horizon=int(time_horizon),
+                simulation_end_date=(
+                    str(simulation_end_date)
+                    if simulation_end_date is not None
+                    else None
+                ),
+                trading_days=int(trading_days),
+                risk_free_rate=float(risk_free_rate),
+                benchmark_ticker=benchmark_ticker,
+                _progress_callback=(
+                    update_analysis_status
+                ),
+            )
 
-            except ValueError as error:
-                st.error("Input or data error.")
-                st.warning(str(error))
+            st.session_state.analysis_results = results
 
-            except KeyError as error:
-                st.error(
-                    "Ticker or benchmark data could not be found."
-                )
+            st.session_state.analysis_inputs = {
+                **current_analysis_inputs,
+                "tickers": list(
+                    current_analysis_inputs["tickers"]
+                ),
+                "weights": dict(
+                    current_analysis_inputs["weights"]
+                ),
+            }
 
-                st.warning(
-                    "Please check that all tickers and the benchmark "
-                    "are valid and available on Yahoo Finance."
-                )
+            analysis_status.update(
+                label="Portfolio analysis complete",
+                state="complete",
+                expanded=False,
+            )
 
-                st.exception(error)
+            st.html(
+                """
+                <div class="rg-analysis-complete">
+                    <span class="rg-analysis-complete-dot"></span>
 
-            except Exception as error:
-                st.error(
-                    "An unexpected error occurred while running "
-                    "the analysis."
-                )
+                    <strong>Analysis complete</strong>
 
-                st.warning(
-                    "Please check your tickers, weights, internet "
-                    "connection, and selected date range."
-                )
+                    <span>
+                        Dashboard updated using the latest allocation.
+                    </span>
+                </div>
+                """
+            )
 
-                st.exception(error)
+        except ValueError as error:
+            show_analysis_error(
+                label="Analysis stopped",
+                message=str(error),
+            )
+
+        except KeyError as error:
+            missing_item = (
+                str(error)
+                .strip("'")
+                .strip('"')
+            )
+
+            show_analysis_error(
+                label="Market data unavailable",
+                message=(
+                    "A required ticker or data field "
+                    f"could not be found: {missing_item}."
+                ),
+            )
+
+        except Exception as error:
+            show_analysis_error(
+                label="Portfolio analysis failed",
+                message=(
+                    "An unexpected error occurred while "
+                    f"running the analysis: {error}"
+                ),
+            )
+
+            st.warning(
+                "Please check your tickers, weights, internet "
+                "connection, and selected date range."
+            )
+
+            st.exception(error)
 
 
 # =========================
